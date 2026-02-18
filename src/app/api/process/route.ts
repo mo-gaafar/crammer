@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { store } from "@/lib/store";
 import { inferLectures } from "@/lib/gemini";
+import { parseSequenceFromFilename } from "@/lib/metadata";
 import { Lecture } from "@/types";
 
 /**
@@ -22,10 +23,20 @@ export async function POST() {
       );
     }
 
-    // Sort chronologically by recordedAt
-    const sorted = [...transcribedFiles].sort(
-      (a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime()
-    );
+    // Sort chronologically; if timestamps are within 5 minutes of each other,
+    // use filename sequence number (part1/part2, 01_, _02, etc.) as tiebreaker.
+    const CLOSE_THRESHOLD_MS = 5 * 60 * 1000;
+    const sorted = [...transcribedFiles].sort((a, b) => {
+      const timeA = new Date(a.recordedAt).getTime();
+      const timeB = new Date(b.recordedAt).getTime();
+      const timeDiff = timeA - timeB;
+      if (Math.abs(timeDiff) < CLOSE_THRESHOLD_MS) {
+        const seqA = parseSequenceFromFilename(a.originalName);
+        const seqB = parseSequenceFromFilename(b.originalName);
+        if (seqA !== null && seqB !== null) return seqA - seqB;
+      }
+      return timeDiff;
+    });
 
     // Build input for Gemini
     const inputs = sorted.map((f) => {

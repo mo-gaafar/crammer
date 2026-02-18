@@ -51,6 +51,7 @@ export default function HomePage() {
   const [phaseMessage, setPhaseMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [transcribeProgress, setTranscribeProgress] = useState({ done: 0, total: 0 });
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   // ── Drag & Drop handlers ─────────────────────────────────────────────────
   const onDragOver = useCallback((e: React.DragEvent) => {
@@ -76,20 +77,47 @@ export default function HomePage() {
   // ── Upload ───────────────────────────────────────────────────────────────
   async function uploadFiles(selected: File[]) {
     if (selected.length === 0) return;
-    setError(null);
+
+    // Deduplication: skip files already present by name+size
+    const existing = new Set(files.map((f) => `${f.name}:${f.size}`));
+    const toUpload = selected.filter((f) => !existing.has(`${f.name}:${f.size}`));
+    const skipped = selected.length - toUpload.length;
+
+    if (toUpload.length === 0) {
+      setError(`All selected file(s) are already uploaded (${skipped} duplicate${skipped !== 1 ? "s" : ""} skipped).`);
+      return;
+    }
+
+    setError(skipped > 0 ? `${skipped} duplicate file(s) skipped.` : null);
     setPhase("uploading");
-    setPhaseMessage(`Uploading ${selected.length} file(s)…`);
+    setUploadProgress(0);
+    setPhaseMessage(`Uploading ${toUpload.length} file(s)…`);
 
     const formData = new FormData();
-    selected.forEach((f) => formData.append("files", f));
+    toUpload.forEach((f) => formData.append("files", f));
 
     try {
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
-      const data = await res.json();
+      // Use XHR so we get upload progress events
+      const data = await new Promise<Record<string, unknown>>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/upload");
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100));
+        };
+        xhr.onload = () => {
+          try {
+            const parsed = JSON.parse(xhr.responseText);
+            if (xhr.status >= 200 && xhr.status < 300) resolve(parsed);
+            else reject(new Error(parsed.error ?? "Upload failed"));
+          } catch {
+            reject(new Error("Upload failed"));
+          }
+        };
+        xhr.onerror = () => reject(new Error("Network error"));
+        xhr.send(formData);
+      });
 
-      if (!res.ok) throw new Error(data.error ?? "Upload failed");
-
-      const newEntries: FileEntry[] = (data.files ?? []).map((f: FileEntry & { originalName?: string }) => ({
+      const newEntries: FileEntry[] = ((data.files ?? []) as Array<FileEntry & { originalName?: string }>).map((f) => ({
         id: f.id,
         name: f.originalName ?? f.name,
         size: f.size,
@@ -102,11 +130,13 @@ export default function HomePage() {
         return [...prev, ...newEntries.filter((e) => !existingIds.has(e.id))];
       });
 
-      if (data.errors?.length) {
-        setError(`Some files were skipped: ${data.errors.join("; ")}`);
+      if ((data.errors as string[] | undefined)?.length) {
+        setError(`Some files were skipped: ${(data.errors as string[]).join("; ")}`);
       }
 
-      setPhase(newEntries.length > 0 ? "uploading" : "idle");
+      // Upload done — go back to idle so the Transcribe button is enabled
+      setPhase("idle");
+      setUploadProgress(0);
       setPhaseMessage("");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -205,6 +235,7 @@ export default function HomePage() {
     setPhaseMessage("");
     setError(null);
     setTranscribeProgress({ done: 0, total: 0 });
+    setUploadProgress(0);
   }
 
   // ── Computed state ───────────────────────────────────────────────────────
@@ -302,6 +333,20 @@ export default function HomePage() {
             ? "bg-green-950/50 border-green-800 text-green-300"
             : "bg-indigo-950/50 border-indigo-800 text-indigo-300"
         }`}>
+          {phase === "uploading" && (
+            <div className="mb-2">
+              <div className="flex justify-between text-xs mb-1">
+                <span>Upload progress</span>
+                <span>{uploadProgress}%</span>
+              </div>
+              <div className="w-full bg-slate-800 rounded-full h-1.5">
+                <div
+                  className="bg-indigo-500 h-1.5 rounded-full transition-all"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
           {phase === "transcribing" && (
             <div className="mb-2">
               <div className="flex justify-between text-xs mb-1">

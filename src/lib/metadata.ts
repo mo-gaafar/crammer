@@ -61,6 +61,32 @@ export function parseDateFromFilename(filename: string): Date | null {
 }
 
 /**
+ * Extract a sequence/order number from a filename for tie-breaking sort.
+ * Detects patterns like: "01_lecture", "part2", "lecture_03", "1 bio notes"
+ */
+export function parseSequenceFromFilename(filename: string): number | null {
+  const base = path.basename(filename, path.extname(filename));
+
+  // Leading number: "01_lecture", "1 bio notes", "01-recording"
+  const leading = base.match(/^(\d+)[_\-\s]/);
+  if (leading) return parseInt(leading[1], 10);
+
+  // "partN", "part_N", "part-N", "part N" (anywhere in filename)
+  const part = base.match(/\bpart[_\-\s]*(\d+)\b/i);
+  if (part) return parseInt(part[1], 10);
+
+  // Trailing number: "lecture_01", "bio 3", "session-02"
+  const trailing = base.match(/[_\-\s](\d+)$/);
+  if (trailing) return parseInt(trailing[1], 10);
+
+  // Bare number filename: "01", "1", "001"
+  const bare = base.match(/^(\d+)$/);
+  if (bare) return parseInt(bare[1], 10);
+
+  return null;
+}
+
+/**
  * Get the best estimate for when an audio file was recorded.
  * Priority: parsed filename date > file mtime
  */
