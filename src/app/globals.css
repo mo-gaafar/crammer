@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-card: #1e293b;
+    --border: #334155;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --accent: #6366f1;
+    --accent-hover: #4f46e5;
+  }
+
+  body {
+    @apply bg-slate-950 text-slate-100 antialiased;
+  }
+
+  * {
+    @apply border-slate-700;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-slate-800 border border-slate-700 rounded-xl p-6;
+  }
+
+  .btn-primary {
+    @apply bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-5 py-2.5 rounded-lg
+           transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-slate-700 hover:bg-slate-600 text-slate-100 font-medium px-5 py-2.5 rounded-lg
+           transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .btn-danger {
+    @apply bg-red-600 hover:bg-red-500 text-white font-medium px-5 py-2.5 rounded-lg
+           transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .badge {
+    @apply text-xs font-medium px-2.5 py-1 rounded-full;
+  }
+
+  .badge-indigo {
+    @apply badge bg-indigo-500/20 text-indigo-300;
+  }
+
+  .badge-green {
+    @apply badge bg-green-500/20 text-green-300;
+  }
+
+  .badge-yellow {
+    @apply badge bg-yellow-500/20 text-yellow-300;
+  }
+
+  .badge-red {
+    @apply badge bg-red-500/20 text-red-300;
+  }
+
+  .badge-slate {
+    @apply badge bg-slate-600 text-slate-300;
+  }
+
+  .input {
+    @apply bg-slate-900 border border-slate-700 text-slate-100 rounded-lg px-4 py-2.5
+           focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent
+           placeholder-slate-500 w-full;
+  }
+
+  .section-title {
+    @apply text-lg font-semibold text-slate-200;
+  }
+
+  .label {
+    @apply text-sm font-medium text-slate-400;
+  }
+
+  .status-uploaded { @apply badge-slate; }
+  .status-transcribing { @apply badge-yellow; }
+  .status-transcribed { @apply badge-green; }
+  .status-error { @apply badge-red; }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { @apply bg-slate-900; }
+::-webkit-scrollbar-thumb { @apply bg-slate-600 rounded-full; }
+::-webkit-scrollbar-thumb:hover { @apply bg-slate-500; }
+
+/* Prose styles for podcast scripts */
+.podcast-script {
+  @apply text-slate-300 leading-relaxed text-sm;
+}
+
+.podcast-script strong {
+  @apply text-slate-100 font-semibold;
+}
+
+.podcast-script p {
+  @apply mb-3;
+}
