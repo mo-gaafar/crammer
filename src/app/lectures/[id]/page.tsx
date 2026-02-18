@@ -265,7 +265,7 @@ export default function LectureDetailPage() {
             <div className="card space-y-4">
               <h2 className="section-title">Generate Podcast Script</h2>
               <p className="text-slate-400 text-sm">
-                Choose a format and let Claude write a ready-to-record podcast episode based on
+                Choose a format and let Gemini write a ready-to-record podcast episode based on
                 this lecture.
               </p>
 
@@ -302,7 +302,7 @@ export default function LectureDetailPage() {
                 {generating ? (
                   <>
                     <span className="animate-spin">⚙️</span>
-                    Claude is writing the script…
+                    Gemini is writing the script…
                   </>
                 ) : (
                   <>
@@ -374,7 +374,7 @@ export default function LectureDetailPage() {
             {generating && (
               <div className="card flex items-center justify-center py-16 space-y-4 flex-col text-center">
                 <div className="text-5xl animate-pulse-slow">✨</div>
-                <p className="text-slate-300 font-medium">Claude is crafting your podcast script…</p>
+                <p className="text-slate-300 font-medium">Gemini is crafting your podcast script…</p>
                 <p className="text-slate-500 text-sm">This typically takes 30-60 seconds for a full episode.</p>
               </div>
             )}

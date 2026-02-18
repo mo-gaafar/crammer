@@ -177,7 +177,7 @@ export default function HomePage() {
   async function handleProcess() {
     setError(null);
     setPhase("processing");
-    setPhaseMessage("Claude is analyzing your notes and grouping them into lectures…");
+    setPhaseMessage("Gemini is analyzing your notes and grouping them into lectures…");
 
     try {
       const res = await fetch("/api/process", { method: "POST" });
@@ -225,7 +225,7 @@ export default function HomePage() {
         <p className="text-slate-400 max-w-xl mx-auto">
           Drop your voice notes from any lectures. We&apos;ll transcribe them with{" "}
           <span className="text-emerald-400">Deepgram</span>, group them into lectures with{" "}
-          <span className="text-violet-400">Claude</span>, and generate podcast scripts so
+          <span className="text-blue-400">Gemini</span>, and generate podcast scripts so
           you can study on the go.
         </p>
       </div>
@@ -385,7 +385,7 @@ export default function HomePage() {
                 className="btn-primary flex items-center gap-2"
               >
                 <span>🧠</span>
-                Infer Lectures with Claude
+                Infer Lectures with Gemini
               </button>
             )}
 
@@ -413,7 +413,7 @@ export default function HomePage() {
             {
               icon: "🧠",
               title: "AI Lecture Grouping",
-              desc: "Claude analyzes the transcripts, infers which recordings belong to which lecture, and generates podcast scripts.",
+              desc: "Gemini analyzes the transcripts, infers which recordings belong to which lecture, and generates podcast scripts.",
             },
           ].map((card, i) => (
             <div key={i} className="card text-center space-y-3">

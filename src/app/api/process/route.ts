@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { store } from "@/lib/store";
-import { inferLectures } from "@/lib/anthropic";
+import { inferLectures } from "@/lib/gemini";
 import { Lecture } from "@/types";
 
 /**
  * POST /api/process
- * Groups transcribed audio files into lectures using Claude.
+ * Groups transcribed audio files into lectures using Gemini.
  */
 export async function POST() {
   try {
@@ -27,7 +27,7 @@ export async function POST() {
       (a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime()
     );
 
-    // Build input for Claude
+    // Build input for Gemini
     const inputs = sorted.map((f) => {
       const transcription = store.getTranscription(f.id);
       return {
@@ -38,7 +38,7 @@ export async function POST() {
       };
     });
 
-    // Call Claude to infer lecture groups
+    // Call Gemini to infer lecture groups
     const lectureGroups = await inferLectures(inputs);
 
     // Clear existing lectures and rebuild

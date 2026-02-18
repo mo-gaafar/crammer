@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { store } from "@/lib/store";
-import { generatePodcastScript } from "@/lib/anthropic";
+import { generatePodcastScript } from "@/lib/gemini";
 import { PodcastFormat, PodcastScript } from "@/types";
 
 /**
