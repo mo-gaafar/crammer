@@ -59,7 +59,7 @@ export default function LecturesPage() {
         <div className="text-6xl">📭</div>
         <h2 className="text-2xl font-semibold text-slate-200">No lectures yet</h2>
         <p className="text-slate-400 max-w-sm mx-auto">
-          Upload and transcribe your voice notes first, then let Claude group them into
+          Upload and transcribe your voice notes first, then let Gemini group them into
           lectures.
         </p>
         <Link href="/" className="btn-primary inline-flex items-center gap-2">

@@ -42,6 +42,6 @@ USER nextjs
 
 EXPOSE 3000
 
-# DEEPGRAM_API_KEY and ANTHROPIC_API_KEY must be supplied at runtime
+# DEEPGRAM_API_KEY and GEMINI_API_KEY must be supplied at runtime
 # (via Coolify environment variables, docker-compose env, or --env flags).
 CMD ["node", "server.js"]

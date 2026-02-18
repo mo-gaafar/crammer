@@ -41,7 +41,7 @@ export default function RootLayout({
                 </Link>
               </div>
               <div className="ml-auto text-xs text-slate-500">
-                Powered by Deepgram + Claude
+                Powered by Deepgram + Gemini
               </div>
             </div>
           </nav>
@@ -51,7 +51,7 @@ export default function RootLayout({
 
           {/* Footer */}
           <footer className="border-t border-slate-800 py-4 text-center text-xs text-slate-600">
-            Crammer — AI Study Voice Notes &middot; Deepgram transcription &middot; Claude lecture inference
+            Crammer — AI Study Voice Notes &middot; Deepgram transcription &middot; Gemini lecture inference
           </footer>
         </div>
       </body>
