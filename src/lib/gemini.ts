@@ -5,7 +5,7 @@ import { withRetry } from "@/lib/retry";
 export { GEMINI_MODELS, DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
 import { DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
 
-const GEMINI_TIMEOUT_MS = 180_000; // 3 min per call
+const GEMINI_TIMEOUT_MS = 600_000; // 10 min — large audio files need time
 
 const getClient = () => {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -50,16 +50,23 @@ export async function transcribeWithGemini(
     fileManager.uploadFile(filePath, { mimeType, displayName: audioFileId })
   );
 
+  // Wait for the file to finish processing before generating
+  let file = uploadResult.file;
+  while (file.state === "PROCESSING") {
+    await new Promise((r) => setTimeout(r, 4000));
+    file = await fileManager.getFile(file.name);
+  }
+  if (file.state === "FAILED") {
+    throw new Error(`Gemini file processing failed for ${audioFileId}`);
+  }
+
   try {
-    const geminiModel = genAI.getGenerativeModel({
-      model,
-      // Apply timeout via request options
-    });
+    const geminiModel = genAI.getGenerativeModel({ model });
 
     const result = await withRetry(() =>
       geminiModel.generateContent(
         [
-          { fileData: { mimeType: uploadResult.file.mimeType, fileUri: uploadResult.file.uri } },
+          { fileData: { mimeType: file.mimeType, fileUri: file.uri } },
           {
             text: "Transcribe this audio recording accurately. If there are multiple speakers, label them (e.g., 'Speaker 1:', 'Speaker 2:'). Return only the transcription text, no commentary.",
           },

@@ -31,16 +31,24 @@ export async function POST(request: NextRequest) {
       (a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime()
     );
 
-    // Build input for Gemini
-    const inputs = sorted.map((f) => {
+    // Build input for Gemini — use simple indices instead of UUIDs so Gemini
+    // can faithfully reproduce them in the audioFileIds output field.
+    const inputs = sorted.map((f, i) => {
       const transcription = store.getTranscription(f.id);
+      const fullText = transcription?.text ?? "(no transcript)";
       return {
-        id: f.id,
+        id: `file_${i}`,
         originalName: f.originalName,
         recordedAt: f.recordedAt,
-        transcript: transcription?.text ?? "(no transcript)",
+        // Truncate per-file transcript for the inference prompt to avoid
+        // hitting token limits; full text is stored separately in the store.
+        transcript: fullText.length > 40_000 ? fullText.slice(0, 40_000) + "\n…[truncated for grouping]" : fullText,
       };
     });
+
+    // Map simple indices back to real file IDs after Gemini returns
+    const indexToId: Record<string, string> = {};
+    sorted.forEach((f, i) => { indexToId[`file_${i}`] = f.id; });
 
     // Call Gemini to infer lecture groups — only clear existing data after success
     const lectureGroups = await inferLectures(inputs, geminiModel);
@@ -54,7 +62,9 @@ export async function POST(request: NextRequest) {
 
     for (const group of lectureGroups) {
       // Build full transcript for the lecture (in chronological order)
-      const groupFiles = group.audioFileIds
+      // Resolve Gemini's simple indices back to real file IDs
+      const realIds = group.audioFileIds.map((id) => indexToId[id] ?? id);
+      const groupFiles = realIds
         .map((id) => sorted.find((f) => f.id === id))
         .filter(Boolean);
 
@@ -78,7 +88,7 @@ export async function POST(request: NextRequest) {
         title: group.title,
         summary: group.summary,
         keyTopics: group.keyTopics,
-        audioFileIds: group.audioFileIds,
+        audioFileIds: realIds,
         fullTranscript,
         createdAt: earliestDate.toISOString(),
       };

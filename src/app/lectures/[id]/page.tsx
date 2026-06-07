@@ -67,6 +67,7 @@ export default function LectureDetailPage() {
   const [scripts, setScripts] = useState<PodcastScript[]>([]);
   const [activeScript, setActiveScript] = useState<PodcastScript | null>(null);
   const [copied, setCopied] = useState(false);
+  const [transcriptCopied, setTranscriptCopied] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -115,6 +116,24 @@ export default function LectureDetailPage() {
     await navigator.clipboard.writeText(activeScript.script);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function handleCopyTranscript() {
+    if (!data) return;
+    const { lecture } = data;
+    const text = [
+      `Title: ${lecture.title}`,
+      `Date: ${formatDate(lecture.createdAt)}`,
+      `Summary: ${lecture.summary}`,
+      `Key Topics: ${lecture.keyTopics.join(", ")}`,
+      "",
+      "--- Full Transcript ---",
+      "",
+      lecture.fullTranscript,
+    ].join("\n");
+    await navigator.clipboard.writeText(text);
+    setTranscriptCopied(true);
+    setTimeout(() => setTranscriptCopied(false), 2000);
   }
 
   function handleDownload() {
@@ -246,9 +265,17 @@ export default function LectureDetailPage() {
           <div className="card space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="section-title">Full Transcript</h2>
-              <span className="text-xs text-slate-500">
-                {lecture.fullTranscript.split(" ").length.toLocaleString()} words
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-slate-500">
+                  {lecture.fullTranscript.split(" ").length.toLocaleString()} words
+                </span>
+                <button
+                  onClick={handleCopyTranscript}
+                  className="btn-secondary text-xs py-1.5 px-3"
+                >
+                  {transcriptCopied ? "✅ Copied" : "📋 Copy"}
+                </button>
+              </div>
             </div>
             <div className="bg-slate-900/50 rounded-xl p-5 max-h-[500px] overflow-y-auto">
               <pre className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap font-sans">

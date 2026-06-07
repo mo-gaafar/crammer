@@ -17,7 +17,9 @@ export async function withRetry<T>(
         msg.includes("429") ||
         msg.includes("503") ||
         msg.includes("rate limit") ||
-        msg.includes("quota");
+        msg.includes("quota") ||
+        msg.includes("aborted") ||
+        msg.includes("timeout");
       if (!isRetryable || attempt === maxAttempts) throw err;
       const delay = baseDelayMs * Math.pow(2, attempt - 1);
       await new Promise((r) => setTimeout(r, delay));
