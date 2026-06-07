@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   }
 
   const response = NextResponse.json({ ok: true });
-  response.cookies.set("crammer_auth", secret, {
+  response.cookies.set("crammer_auth", "ok", {
     httpOnly: true,
     sameSite: "lax",
     path: "/",

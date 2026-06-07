@@ -9,7 +9,6 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = request.cookies.get("crammer_auth")?.value;
   const secret = process.env.APP_SECRET_KEY;
 
   if (!secret) {
@@ -17,7 +16,9 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (token !== secret) {
+  const token = request.cookies.get("crammer_auth")?.value;
+
+  if (token !== "ok") {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
