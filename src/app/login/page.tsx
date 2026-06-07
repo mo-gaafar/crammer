@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [key, setKey] = useState("");
   const [error, setError] = useState("");
@@ -16,20 +15,23 @@ function LoginForm() {
     setLoading(true);
     setError("");
 
-    const res = await fetch("/api/auth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key }),
-    });
+    try {
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key }),
+      });
 
-    setLoading(false);
-
-    if (res.ok) {
-      const next = searchParams.get("next") || "/";
-      router.push(next);
-      router.refresh();
-    } else {
-      setError("Invalid secret key.");
+      if (res.ok) {
+        const next = searchParams.get("next") || "/";
+        window.location.href = next;
+      } else {
+        setLoading(false);
+        setError("Invalid secret key.");
+      }
+    } catch {
+      setLoading(false);
+      setError("Network error — please try again.");
     }
   }
 
