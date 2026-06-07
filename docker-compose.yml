@@ -9,9 +9,10 @@ services:
     ports:
       - "3000:3000"
     environment:
-      # Copy these from .env.local or set them in Coolify's dashboard
       - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GOOGLE_DRIVE_API_KEY=${GOOGLE_DRIVE_API_KEY}
+      - APP_SECRET_KEY=${APP_SECRET_KEY}
     volumes:
       # Persist uploaded audio files across container restarts
       - crammer-uploads:/tmp/crammer-uploads

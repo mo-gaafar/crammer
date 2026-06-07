@@ -3,6 +3,7 @@ import { GoogleAIFileManager } from "@google/generative-ai/server";
 import { AudioFile, Lecture, PodcastFormat, Transcription } from "@/types";
 import { withRetry } from "@/lib/retry";
 export { GEMINI_MODELS, DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
+import { DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
 
 const GEMINI_TIMEOUT_MS = 180_000; // 3 min per call
 

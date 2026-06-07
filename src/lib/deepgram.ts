@@ -13,8 +13,8 @@ export async function transcribeAudioFile(
   }
 
   const deepgram = createClient(apiKey, {
-    fetch: (url, options) =>
-      fetch(url as string, { ...options, signal: AbortSignal.timeout(120_000) }),
+    fetch: ((url: string, options: RequestInit) =>
+      fetch(url, { ...options, signal: AbortSignal.timeout(120_000) })) as never,
   });
   const audioBuffer = fs.readFileSync(filePath);
 
