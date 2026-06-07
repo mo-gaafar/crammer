@@ -1,12 +1,21 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { AudioFile, Lecture, PodcastFormat } from "@/types";
+import { GoogleAIFileManager } from "@google/generative-ai/server";
+import { AudioFile, Lecture, PodcastFormat, Transcription } from "@/types";
+import { withRetry } from "@/lib/retry";
+export { GEMINI_MODELS, DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
 
-const MODEL = "gemini-2.0-flash";
+const GEMINI_TIMEOUT_MS = 180_000; // 3 min per call
 
 const getClient = () => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY is not set in environment variables");
   return new GoogleGenerativeAI(apiKey);
+};
+
+const getFileManager = () => {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY is not set in environment variables");
+  return new GoogleAIFileManager(apiKey);
 };
 
 interface TranscriptionInput {
@@ -25,13 +34,56 @@ interface LectureGroup {
 }
 
 /**
+ * Transcribe an audio file using Gemini's multimodal capabilities.
+ */
+export async function transcribeWithGemini(
+  filePath: string,
+  audioFileId: string,
+  mimeType: string,
+  model: string = DEFAULT_GEMINI_MODEL
+): Promise<Transcription> {
+  const fileManager = getFileManager();
+  const genAI = getClient();
+
+  const uploadResult = await withRetry(() =>
+    fileManager.uploadFile(filePath, { mimeType, displayName: audioFileId })
+  );
+
+  try {
+    const geminiModel = genAI.getGenerativeModel({
+      model,
+      // Apply timeout via request options
+    });
+
+    const result = await withRetry(() =>
+      geminiModel.generateContent(
+        [
+          { fileData: { mimeType: uploadResult.file.mimeType, fileUri: uploadResult.file.uri } },
+          {
+            text: "Transcribe this audio recording accurately. If there are multiple speakers, label them (e.g., 'Speaker 1:', 'Speaker 2:'). Return only the transcription text, no commentary.",
+          },
+        ],
+        { timeout: GEMINI_TIMEOUT_MS }
+      )
+    );
+
+    const text = result.response.text().trim();
+    if (!text) throw new Error("Gemini returned an empty transcription");
+
+    return { audioFileId, text, words: [], confidence: 1.0, duration: 0 };
+  } finally {
+    await fileManager.deleteFile(uploadResult.file.name).catch(() => {});
+  }
+}
+
+/**
  * Use Gemini to infer lecture groupings and metadata from transcriptions.
- * Returns an ordered array of lecture groups.
  */
 export async function inferLectures(
-  transcriptions: TranscriptionInput[]
+  transcriptions: TranscriptionInput[],
+  model: string = DEFAULT_GEMINI_MODEL
 ): Promise<LectureGroup[]> {
-  const model = getClient().getGenerativeModel({ model: MODEL });
+  const geminiModel = getClient().getGenerativeModel({ model });
 
   const prompt = `You are an academic assistant analyzing voice notes from lectures.
 
@@ -70,7 +122,9 @@ Return ONLY valid JSON matching this exact structure (no markdown, no code fence
   ]
 }`;
 
-  const result = await model.generateContent(prompt);
+  const result = await withRetry(() =>
+    geminiModel.generateContent(prompt, { timeout: GEMINI_TIMEOUT_MS })
+  );
   const raw = result.response
     .text()
     .replace(/```json\n?/g, "")
@@ -94,9 +148,10 @@ export async function generatePodcastScript(
   lecture: Lecture,
   audioFiles: AudioFile[],
   transcript: string,
-  format: PodcastFormat
+  format: PodcastFormat,
+  model: string = DEFAULT_GEMINI_MODEL
 ): Promise<{ title: string; description: string; script: string }> {
-  const model = getClient().getGenerativeModel({ model: MODEL });
+  const geminiModel = getClient().getGenerativeModel({ model });
 
   const formatInstructions: Record<PodcastFormat, string> = {
     qa: `Format: Q&A Style
@@ -145,7 +200,9 @@ The script should be engaging, educational, and approximately 10-20 minutes of a
 Return the script with clear speaker labels and stage directions where helpful.
 Include a compelling episode title and a 1-2 sentence episode description at the top (labeled "TITLE:" and "DESCRIPTION:").`;
 
-  const result = await model.generateContent(prompt);
+  const result = await withRetry(() =>
+    geminiModel.generateContent(prompt, { timeout: GEMINI_TIMEOUT_MS })
+  );
   const text = result.response.text();
 
   const titleMatch = text.match(/TITLE:\s*(.+)/i);

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { store } from "@/lib/store";
 import { inferLectures } from "@/lib/gemini";
@@ -6,10 +6,14 @@ import { Lecture } from "@/types";
 
 /**
  * POST /api/process
+ * Body: { geminiModel?: string }
  * Groups transcribed audio files into lectures using Gemini.
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
+    const body = await request.json().catch(() => ({}));
+    const geminiModel: string | undefined = body.geminiModel;
+
     store.updateStatus({ phase: "processing" });
 
     const audioFiles = store.getAllAudioFiles();
@@ -38,12 +42,14 @@ export async function POST() {
       };
     });
 
-    // Call Gemini to infer lecture groups
-    const lectureGroups = await inferLectures(inputs);
+    // Call Gemini to infer lecture groups — only clear existing data after success
+    const lectureGroups = await inferLectures(inputs, geminiModel);
 
-    // Clear existing lectures and rebuild
+    if (!lectureGroups || lectureGroups.length === 0) {
+      throw new Error("Gemini returned no lecture groups");
+    }
+
     store.clearLectures();
-
     const savedLectures: Lecture[] = [];
 
     for (const group of lectureGroups) {

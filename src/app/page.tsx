@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { GEMINI_MODELS, DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
 
 interface FileEntry {
   id: string;
@@ -10,9 +11,11 @@ interface FileEntry {
   status: "uploaded" | "transcribing" | "transcribed" | "error";
   recordedAt: string;
   errorMessage?: string;
+  transcript?: string;
 }
 
 type Phase = "idle" | "uploading" | "transcribing" | "processing" | "complete" | "error";
+type SttProvider = "deepgram" | "gemini";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -51,6 +54,80 @@ export default function HomePage() {
   const [phaseMessage, setPhaseMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [transcribeProgress, setTranscribeProgress] = useState({ done: 0, total: 0 });
+  const [expandedTranscripts, setExpandedTranscripts] = useState<Set<string>>(new Set());
+  const [copiedTranscriptId, setCopiedTranscriptId] = useState<string | null>(null);
+  const [driveUrl, setDriveUrl] = useState("");
+  const [driveBrowsing, setDriveBrowsing] = useState(false);
+  const [driveImporting, setDriveImporting] = useState(false);
+  const [driveError, setDriveError] = useState<string | null>(null);
+  const [driveListing, setDriveListing] = useState<null | {
+    files: { id: string; name: string; size: number; mimeType: string; alreadyImported: boolean; supported: boolean }[];
+  }>(null);
+  const [driveSelected, setDriveSelected] = useState<Set<string>>(new Set());
+
+  // Settings
+  const [sttProvider, setSttProvider] = useState<SttProvider>("deepgram");
+  const [geminiModel, setGeminiModel] = useState(DEFAULT_GEMINI_MODEL);
+
+  // Restore settings and hydrate file state from server on mount
+  useEffect(() => {
+    const savedProvider = localStorage.getItem("sttProvider") as SttProvider | null;
+    const savedModel = localStorage.getItem("geminiModel");
+    if (savedProvider) setSttProvider(savedProvider);
+    if (savedModel) setGeminiModel(savedModel);
+
+    // Sync any server-side file state (survives tab close / server restart)
+    fetch("/api/status")
+      .then((r) => r.json())
+      .then((data) => {
+        const serverFiles: FileEntry[] = (data.files ?? []).map(
+          (f: { id: string; name: string; size: number; status: FileEntry["status"]; recordedAt: string; errorMessage?: string; transcript?: string }) => ({
+            id: f.id,
+            name: f.name,
+            size: f.size,
+            status: f.status,
+            recordedAt: f.recordedAt,
+            errorMessage: f.errorMessage,
+            transcript: f.transcript,
+          })
+        );
+        if (serverFiles.length > 0) {
+          setFiles(serverFiles);
+          // Auto-expand transcripts that are already done
+          const withTranscripts = new Set(
+            serverFiles.filter((f) => f.transcript).map((f) => f.id)
+          );
+          if (withTranscripts.size > 0) setExpandedTranscripts(withTranscripts);
+        }
+      })
+      .catch(() => {}); // Non-fatal — server may not have state
+  }, []);
+
+  function saveSttProvider(p: SttProvider) {
+    setSttProvider(p);
+    localStorage.setItem("sttProvider", p);
+  }
+
+  function saveGeminiModel(m: string) {
+    setGeminiModel(m);
+    localStorage.setItem("geminiModel", m);
+  }
+
+  function copyTranscript(id: string, text: string) {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedTranscriptId(id);
+      setTimeout(() => setCopiedTranscriptId(null), 2000);
+    });
+  }
+
+  function toggleTranscript(id: string) {
+    setExpandedTranscripts((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   // ── Drag & Drop handlers ─────────────────────────────────────────────────
   const onDragOver = useCallback((e: React.DragEvent) => {
@@ -106,7 +183,7 @@ export default function HomePage() {
         setError(`Some files were skipped: ${data.errors.join("; ")}`);
       }
 
-      setPhase(newEntries.length > 0 ? "uploading" : "idle");
+      setPhase("idle");
       setPhaseMessage("");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -123,27 +200,30 @@ export default function HomePage() {
     setError(null);
     setPhase("transcribing");
     setTranscribeProgress({ done: 0, total: toTranscribe.length });
-    setPhaseMessage(`Transcribing ${toTranscribe.length} file(s) with Deepgram…`);
+    const providerLabel = sttProvider === "gemini" ? `Gemini (${geminiModel})` : "Deepgram";
+    setPhaseMessage(`Transcribing ${toTranscribe.length} file(s) with ${providerLabel}…`);
 
-    // Mark all as transcribing optimistically
     setFiles((prev) =>
       prev.map((f) =>
         f.status === "uploaded" ? { ...f, status: "transcribing" } : f
       )
     );
 
-    // Transcribe one at a time so we can show per-file progress
     let done = 0;
     for (const file of toTranscribe) {
       try {
         const res = await fetch("/api/transcribe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fileIds: [file.id] }),
+          body: JSON.stringify({
+            fileIds: [file.id],
+            sttProvider,
+            geminiModel,
+          }),
         });
         const data = await res.json();
 
-        const result = data.results?.find((r: { id: string; status: string; error?: string }) => r.id === file.id);
+        const result = data.results?.find((r: { id: string; status: string; transcript?: string; error?: string }) => r.id === file.id);
 
         setFiles((prev) =>
           prev.map((f) =>
@@ -152,10 +232,16 @@ export default function HomePage() {
                   ...f,
                   status: result?.status === "transcribed" ? "transcribed" : "error",
                   errorMessage: result?.error,
+                  transcript: result?.transcript,
                 }
               : f
           )
         );
+
+        // Auto-expand transcript for the just-finished file
+        if (result?.transcript) {
+          setExpandedTranscripts((prev) => new Set(prev).add(file.id));
+        }
       } catch {
         setFiles((prev) =>
           prev.map((f) =>
@@ -169,7 +255,7 @@ export default function HomePage() {
       setPhaseMessage(`Transcribing… ${done}/${toTranscribe.length} complete`);
     }
 
-    setPhase("processing");
+    setPhase("idle");
     setPhaseMessage("Transcription complete. Ready to process into lectures.");
   }
 
@@ -180,7 +266,11 @@ export default function HomePage() {
     setPhaseMessage("Gemini is analyzing your notes and grouping them into lectures…");
 
     try {
-      const res = await fetch("/api/process", { method: "POST" });
+      const res = await fetch("/api/process", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ geminiModel }),
+      });
       const data = await res.json();
 
       if (!res.ok) throw new Error(data.error ?? "Processing failed");
@@ -188,12 +278,110 @@ export default function HomePage() {
       setPhase("complete");
       setPhaseMessage(`Done! ${data.lectures} lecture(s) generated.`);
 
-      // Navigate to lectures page after short delay
       setTimeout(() => router.push("/lectures"), 1200);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg);
       setPhase("error");
+    }
+  }
+
+  // ── Google Drive import ──────────────────────────────────────────────────
+  async function handleDriveBrowse() {
+    if (!driveUrl.trim()) return;
+    setDriveError(null);
+    setDriveListing(null);
+    setDriveSelected(new Set());
+    setDriveBrowsing(true);
+
+    try {
+      const res = await fetch(`/api/drive?folderUrl=${encodeURIComponent(driveUrl)}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to list folder");
+      if (!data.files?.length) {
+        setDriveError("No audio files found in this folder (make sure it is shared publicly).");
+      } else {
+        setDriveListing(data);
+        // Pre-select all importable files
+        const selectable = data.files
+          .filter((f: { supported: boolean; alreadyImported: boolean }) => f.supported && !f.alreadyImported)
+          .map((f: { id: string }) => f.id);
+        setDriveSelected(new Set(selectable));
+      }
+    } catch (err) {
+      setDriveError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setDriveBrowsing(false);
+    }
+  }
+
+  async function handleDriveImport() {
+    if (!driveListing || driveSelected.size === 0) return;
+    setDriveError(null);
+    setDriveImporting(true);
+
+    try {
+      const res = await fetch("/api/drive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folderUrl: driveUrl, fileIds: Array.from(driveSelected) }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Drive import failed");
+
+      const newEntries: FileEntry[] = (data.files ?? []).map(
+        (f: FileEntry & { originalName?: string }) => ({
+          id: f.id,
+          name: f.originalName ?? f.name,
+          size: f.size,
+          status: f.status,
+          recordedAt: f.recordedAt,
+        })
+      );
+      setFiles((prev) => {
+        const existingIds = new Set(prev.map((p) => p.id));
+        return [...prev, ...newEntries.filter((e) => !existingIds.has(e.id))];
+      });
+
+      const notices: string[] = [];
+      if (data.skipped > 0) notices.push(`${data.skipped} already imported`);
+      if (data.errors?.length) notices.push(`failed: ${data.errors.join("; ")}`);
+      if (notices.length) setDriveError(`Imported ${data.imported} file(s). ${notices.join(", ")}.`);
+
+      setDriveListing(null);
+      setDriveSelected(new Set());
+      setDriveUrl("");
+    } catch (err) {
+      setDriveError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setDriveImporting(false);
+    }
+  }
+
+  function handleDriveCancel() {
+    setDriveListing(null);
+    setDriveSelected(new Set());
+    setDriveError(null);
+  }
+
+  function toggleDriveFile(id: string) {
+    setDriveSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAllDriveFiles() {
+    if (!driveListing) return;
+    const selectable = driveListing.files
+      .filter((f) => f.supported && !f.alreadyImported)
+      .map((f) => f.id);
+    if (driveSelected.size === selectable.length) {
+      setDriveSelected(new Set());
+    } else {
+      setDriveSelected(new Set(selectable));
     }
   }
 
@@ -205,6 +393,9 @@ export default function HomePage() {
     setPhaseMessage("");
     setError(null);
     setTranscribeProgress({ done: 0, total: 0 });
+    setExpandedTranscripts(new Set());
+    setDriveUrl("");
+    setDriveError(null);
   }
 
   // ── Computed state ───────────────────────────────────────────────────────
@@ -223,10 +414,9 @@ export default function HomePage() {
           <span className="text-indigo-400">Cram</span>mer
         </h1>
         <p className="text-slate-400 max-w-xl mx-auto">
-          Drop your voice notes from any lectures. We&apos;ll transcribe them with{" "}
-          <span className="text-emerald-400">Deepgram</span>, group them into lectures with{" "}
-          <span className="text-blue-400">Gemini</span>, and generate podcast scripts so
-          you can study on the go.
+          Drop your voice notes from any lectures. We&apos;ll transcribe them, group them into
+          lectures with <span className="text-blue-400">Gemini</span>, and generate podcast
+          scripts so you can study on the go.
         </p>
       </div>
 
@@ -249,6 +439,58 @@ export default function HomePage() {
             {step.label}
           </span>
         ))}
+      </div>
+
+      {/* Settings panel */}
+      <div className="card space-y-4">
+        <h2 className="section-title text-sm">Settings</h2>
+        <div className="flex flex-wrap gap-6">
+          {/* STT Provider */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-slate-400">Transcription Provider</label>
+            <div className="flex gap-2">
+              {(["deepgram", "gemini"] as SttProvider[]).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => saveSttProvider(p)}
+                  disabled={isWorking}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                    sttProvider === p
+                      ? "bg-indigo-600 border-indigo-500 text-white"
+                      : "bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500"
+                  }`}
+                >
+                  {p === "deepgram" ? "Deepgram Nova-2" : "Gemini STT"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Gemini Model */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-slate-400">
+              Gemini Model
+              <span className="ml-1 text-slate-600">(inference &amp; STT)</span>
+            </label>
+            <select
+              value={geminiModel}
+              onChange={(e) => saveGeminiModel(e.target.value)}
+              disabled={isWorking}
+              className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+            >
+              {GEMINI_MODELS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        {sttProvider === "gemini" && (
+          <p className="text-xs text-amber-400/80">
+            Gemini STT uses the Files API — audio is uploaded temporarily then deleted after transcription.
+          </p>
+        )}
       </div>
 
       {/* Drop zone */}
@@ -285,6 +527,113 @@ export default function HomePage() {
           <p className="text-indigo-400 text-sm mt-3 font-medium">
             {files.length} file(s) ready &mdash; drop more to add
           </p>
+        )}
+      </div>
+
+      {/* Google Drive import */}
+      <div className="card space-y-3">
+        <h2 className="section-title text-sm flex items-center gap-2">
+          <span>📁</span> Import from Google Drive
+        </h2>
+        <p className="text-xs text-slate-500">
+          Paste a public Google Drive folder link, browse its audio files, then choose what to import.
+          Requires <code className="text-slate-400">GOOGLE_DRIVE_API_KEY</code> in your env.
+        </p>
+
+        {/* URL input row — hidden while listing is shown */}
+        {!driveListing && (
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={driveUrl}
+              onChange={(e) => setDriveUrl(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleDriveBrowse()}
+              placeholder="https://drive.google.com/drive/folders/…"
+              disabled={driveBrowsing || isWorking}
+              className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500"
+            />
+            <button
+              onClick={handleDriveBrowse}
+              disabled={!driveUrl.trim() || driveBrowsing || isWorking}
+              className="btn-primary flex items-center gap-2 whitespace-nowrap"
+            >
+              {driveBrowsing ? (
+                <><span className="animate-spin inline-block">⏳</span> Browsing…</>
+              ) : (
+                <><span>🔍</span> Browse</>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* File picker */}
+        {driveListing && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={toggleAllDriveFiles}
+                className="text-xs text-indigo-400 hover:text-indigo-300"
+              >
+                {driveSelected.size === driveListing.files.filter((f) => f.supported && !f.alreadyImported).length
+                  ? "Deselect all"
+                  : "Select all"}
+              </button>
+              <span className="text-xs text-slate-500">
+                {driveSelected.size} of {driveListing.files.filter((f) => f.supported && !f.alreadyImported).length} selected
+              </span>
+            </div>
+
+            <ul className="divide-y divide-slate-800 rounded-lg border border-slate-700 overflow-hidden max-h-64 overflow-y-auto">
+              {driveListing.files.map((f) => {
+                const disabled = !f.supported || f.alreadyImported;
+                return (
+                  <li
+                    key={f.id}
+                    className={`flex items-center gap-3 px-3 py-2.5 text-sm ${disabled ? "opacity-40" : "hover:bg-slate-800/60 cursor-pointer"}`}
+                    onClick={() => !disabled && toggleDriveFile(f.id)}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={driveSelected.has(f.id)}
+                      disabled={disabled}
+                      onChange={() => toggleDriveFile(f.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="accent-indigo-500 h-4 w-4 shrink-0"
+                    />
+                    <span className="flex-1 truncate text-slate-200">{f.name}</span>
+                    <span className="text-xs text-slate-500 shrink-0">{formatBytes(f.size)}</span>
+                    {f.alreadyImported && <span className="text-xs text-slate-600 shrink-0">already imported</span>}
+                    {!f.supported && <span className="text-xs text-slate-600 shrink-0">unsupported</span>}
+                  </li>
+                );
+              })}
+            </ul>
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleDriveCancel}
+                disabled={driveImporting}
+                className="btn-secondary text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDriveImport}
+                disabled={driveSelected.size === 0 || driveImporting}
+                className="btn-primary flex items-center gap-2 text-sm"
+              >
+                {driveImporting ? (
+                  <><span className="animate-spin inline-block">⏳</span> Importing…</>
+                ) : (
+                  <><span>⬇️</span> Import {driveSelected.size} file{driveSelected.size !== 1 ? "s" : ""}</>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {driveError && (
+          <p className="text-xs text-amber-400">{driveError}</p>
         )}
       </div>
 
@@ -344,25 +693,68 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-            {files.map((f) => (
-              <div
-                key={f.id}
-                className="flex items-center gap-3 bg-slate-900/50 rounded-lg px-4 py-3 text-sm"
-              >
-                <span className="text-lg">🎵</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-slate-200 font-medium truncate">{f.name}</p>
-                  <p className="text-slate-500 text-xs mt-0.5">
-                    {formatBytes(f.size)} &middot; Recorded: {formatDate(f.recordedAt)}
-                  </p>
-                  {f.errorMessage && (
-                    <p className="text-red-400 text-xs mt-0.5">{f.errorMessage}</p>
+          <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
+            {files.map((f) => {
+              const isExpanded = expandedTranscripts.has(f.id);
+              return (
+                <div
+                  key={f.id}
+                  className="bg-slate-900/50 rounded-lg px-4 py-3 text-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg flex-shrink-0">🎵</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-slate-200 font-medium truncate">{f.name}</p>
+                      <p className="text-slate-500 text-xs mt-0.5">
+                        {formatBytes(f.size)} &middot; Recorded: {formatDate(f.recordedAt)}
+                      </p>
+                      {f.errorMessage && (
+                        <p className="text-red-400 text-xs mt-0.5">{f.errorMessage}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {f.transcript && (
+                        <>
+                          <button
+                            onClick={() => copyTranscript(f.id, f.transcript!)}
+                            className="text-xs text-slate-400 hover:text-slate-200 transition-colors px-2 py-0.5 rounded border border-slate-700 hover:border-slate-500"
+                            title="Copy transcript to clipboard"
+                          >
+                            {copiedTranscriptId === f.id ? "✓ copied" : "copy"}
+                          </button>
+                          <button
+                            onClick={() => toggleTranscript(f.id)}
+                            className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                          >
+                            {isExpanded ? "hide" : "show"} transcript
+                          </button>
+                        </>
+                      )}
+                      <StatusBadge status={f.status} />
+                    </div>
+                  </div>
+
+                  {/* Transcript preview */}
+                  {f.status === "transcribing" && (
+                    <p className="mt-2 text-xs text-slate-500 animate-pulse pl-8">
+                      Transcribing…
+                    </p>
+                  )}
+                  {f.transcript && isExpanded && (
+                    <div className="mt-3 pl-8">
+                      <div className="bg-slate-800/60 rounded-lg p-3 text-xs text-slate-300 leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto border border-slate-700">
+                        {f.transcript}
+                      </div>
+                    </div>
+                  )}
+                  {f.transcript && !isExpanded && (
+                    <p className="mt-2 pl-8 text-xs text-slate-500 line-clamp-2">
+                      {f.transcript}
+                    </p>
                   )}
                 </div>
-                <StatusBadge status={f.status} />
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Action buttons */}
@@ -375,6 +767,9 @@ export default function HomePage() {
               >
                 <span>⚡</span>
                 Transcribe {uploadedCount} File{uploadedCount !== 1 ? "s" : ""}
+                <span className="text-indigo-300 text-xs">
+                  ({sttProvider === "deepgram" ? "Deepgram" : "Gemini"})
+                </span>
               </button>
             )}
 
@@ -407,8 +802,8 @@ export default function HomePage() {
             },
             {
               icon: "⚡",
-              title: "Deepgram Transcription",
-              desc: "Each note is transcribed with Deepgram Nova-2 — speaker diarization, punctuation, and paragraph detection included.",
+              title: "Transcription",
+              desc: "Each note is transcribed with Deepgram Nova-2 or Gemini STT. Speaker diarization and punctuation included.",
             },
             {
               icon: "🧠",

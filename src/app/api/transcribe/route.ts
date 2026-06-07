@@ -1,20 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { store } from "@/lib/store";
 import { transcribeAudioFile } from "@/lib/deepgram";
+import { transcribeWithGemini, DEFAULT_GEMINI_MODEL } from "@/lib/gemini";
 
 /**
  * POST /api/transcribe
- * Body: { fileIds?: string[] }  — if omitted, transcribes all uploaded files
+ * Body: { fileIds?: string[], sttProvider?: "deepgram" | "gemini", geminiModel?: string }
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
     const fileIds: string[] | undefined = body.fileIds;
+    const sttProvider: "deepgram" | "gemini" = body.sttProvider ?? "deepgram";
+    const geminiModel: string = body.geminiModel ?? DEFAULT_GEMINI_MODEL;
 
+    // Recover any files that got stuck in "transcribing" from a previous crashed request
     const allFiles = store.getAllAudioFiles();
+    allFiles
+      .filter((f) => f.status === "transcribing")
+      .forEach((f) => store.updateAudioFile(f.id, { status: "uploaded" }));
+
+    const freshFiles = store.getAllAudioFiles();
     const toTranscribe = fileIds
-      ? allFiles.filter((f) => fileIds.includes(f.id))
-      : allFiles.filter((f) => f.status === "uploaded");
+      ? freshFiles.filter((f) => fileIds.includes(f.id) && f.status === "uploaded")
+      : freshFiles.filter((f) => f.status === "uploaded");
 
     if (toTranscribe.length === 0) {
       return NextResponse.json({ message: "No files to transcribe", transcribed: 0 });
@@ -22,34 +31,32 @@ export async function POST(request: NextRequest) {
 
     store.updateStatus({ phase: "transcribing" });
 
-    const results: { id: string; status: string; error?: string }[] = [];
+    const results: { id: string; status: string; transcript?: string; error?: string }[] = [];
 
     for (const file of toTranscribe) {
       store.updateAudioFile(file.id, { status: "transcribing" });
 
       try {
-        const transcription = await transcribeAudioFile(
-          file.savedPath,
-          file.id,
-          file.mimeType
-        );
+        const transcription =
+          sttProvider === "gemini"
+            ? await transcribeWithGemini(file.savedPath, file.id, file.mimeType, geminiModel)
+            : await transcribeAudioFile(file.savedPath, file.id, file.mimeType);
+
         store.addTranscription(transcription);
         store.updateAudioFile(file.id, { status: "transcribed" });
-        results.push({ id: file.id, status: "transcribed" });
+        results.push({ id: file.id, status: "transcribed", transcript: transcription.text });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         store.updateAudioFile(file.id, { status: "error", errorMessage: message });
         results.push({ id: file.id, status: "error", error: message });
       }
 
-      // Update count
       const transcribed = store
         .getAllAudioFiles()
         .filter((f) => f.status === "transcribed").length;
       store.updateStatus({ transcribedFiles: transcribed });
     }
 
-    // Check if all files are done
     const allDone = store
       .getAllAudioFiles()
       .every((f) => f.status === "transcribed" || f.status === "error");

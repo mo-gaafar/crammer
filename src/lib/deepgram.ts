@@ -12,7 +12,10 @@ export async function transcribeAudioFile(
     throw new Error("DEEPGRAM_API_KEY is not set in environment variables");
   }
 
-  const deepgram = createClient(apiKey);
+  const deepgram = createClient(apiKey, {
+    fetch: (url, options) =>
+      fetch(url as string, { ...options, signal: AbortSignal.timeout(120_000) }),
+  });
   const audioBuffer = fs.readFileSync(filePath);
 
   const { result, error } = await deepgram.listen.prerecorded.transcribeFile(
