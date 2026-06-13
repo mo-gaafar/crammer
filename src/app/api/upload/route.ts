@@ -84,6 +84,13 @@ export async function DELETE() {
       } catch {
         // ignore individual file deletion errors
       }
+      if (f.extractedAudioPath) {
+        try {
+          if (fs.existsSync(f.extractedAudioPath)) fs.unlinkSync(f.extractedAudioPath);
+        } catch {
+          // ignore
+        }
+      }
     }
     store.reset();
     return NextResponse.json({ success: true });

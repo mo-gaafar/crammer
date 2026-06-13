@@ -9,6 +9,8 @@ export interface AudioFile {
   uploadedAt: string; // ISO string
   status: "uploaded" | "transcribing" | "transcribed" | "error";
   errorMessage?: string;
+  /** Path to extracted audio file when source was a video — cleaned up after transcription */
+  extractedAudioPath?: string;
 }
 
 export interface TranscriptionWord {

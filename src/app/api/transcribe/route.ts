@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import fs from "fs";
 import { store } from "@/lib/store";
 import { transcribeAudioFile } from "@/lib/deepgram";
 import { transcribeWithGemini, DEFAULT_GEMINI_MODEL } from "@/lib/gemini";
+import { isVideoMimeType, extractAudioFromVideo } from "@/lib/video";
 
 /**
  * POST /api/transcribe
@@ -37,10 +39,27 @@ export async function POST(request: NextRequest) {
       store.updateAudioFile(file.id, { status: "transcribing" });
 
       try {
+        let transcribePath = file.savedPath;
+        let transcribeMimeType = file.mimeType;
+
+        if (isVideoMimeType(file.mimeType)) {
+          const audioPath = await extractAudioFromVideo(file.savedPath, file.id);
+          store.updateAudioFile(file.id, { extractedAudioPath: audioPath });
+          transcribePath = audioPath;
+          transcribeMimeType = "audio/mpeg";
+        }
+
         const transcription =
           sttProvider === "gemini"
-            ? await transcribeWithGemini(file.savedPath, file.id, file.mimeType, geminiModel)
-            : await transcribeAudioFile(file.savedPath, file.id, file.mimeType);
+            ? await transcribeWithGemini(transcribePath, file.id, transcribeMimeType, geminiModel)
+            : await transcribeAudioFile(transcribePath, file.id, transcribeMimeType);
+
+        // Clean up extracted audio now that transcription is done
+        const extractedPath = store.getAudioFile(file.id)?.extractedAudioPath;
+        if (extractedPath) {
+          try { fs.unlinkSync(extractedPath); } catch { /* ignore */ }
+          store.updateAudioFile(file.id, { extractedAudioPath: undefined });
+        }
 
         store.addTranscription(transcription);
         store.updateAudioFile(file.id, { status: "transcribed" });

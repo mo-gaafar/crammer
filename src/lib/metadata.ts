@@ -84,14 +84,24 @@ export const ALLOWED_AUDIO_TYPES: Record<string, string> = {
   "audio/webm": ".webm",
   "audio/flac": ".flac",
   "audio/x-flac": ".flac",
-  "video/mp4": ".mp4", // some recorders save as mp4
+  // Video types — audio will be extracted before transcription
+  "video/mp4": ".mp4",
   "video/webm": ".webm",
+  "video/quicktime": ".mov",
+  "video/x-msvideo": ".avi",
+  "video/avi": ".avi",
+  "video/x-matroska": ".mkv",
+  "video/mkv": ".mkv",
+  "video/x-ms-wmv": ".wmv",
 };
 
 export function isAllowedAudioType(mimeType: string, filename: string): boolean {
   if (ALLOWED_AUDIO_TYPES[mimeType]) return true;
   const ext = path.extname(filename).toLowerCase();
-  const allowed = [".mp3", ".mp4", ".m4a", ".wav", ".ogg", ".webm", ".flac", ".aac", ".opus"];
+  const allowed = [
+    ".mp3", ".mp4", ".m4a", ".wav", ".ogg", ".webm", ".flac", ".aac", ".opus",
+    ".mov", ".avi", ".mkv", ".wmv",
+  ];
   return allowed.includes(ext);
 }
 
