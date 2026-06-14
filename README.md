@@ -1,5 +1,9 @@
 # Crammer
 
+> Open source AI study material generator for lectures, transcripts, course
+> recordings, flashcards, quizzes, study guides, printable question banks, and
+> review podcasts.
+
 Crammer is an open source education SaaS project for turning lectures,
 recordings, and transcripts into reusable study materials.
 
@@ -32,7 +36,15 @@ Read the planning docs:
 - [Crammer MCP](docs/mcp.md)
 - [Architecture Roadmap](docs/architecture-roadmap.md)
 - [Work Plan](docs/work-plan.md)
-- [Contributing](docs/contributing.md)
+- [Contributing](CONTRIBUTING.md)
+- [Support Crammer](DONATIONS.md)
+
+## Search Keywords
+
+AI study app, lecture transcription, transcript summarizer, study guide
+generator, flashcard generator, quiz generator, lecture notes, podcast study
+tool, BYOK AI app, self-hosted education SaaS, open source EdTech, Gemini,
+Deepgram, Next.js, MCP, Anki export, DOCX study guide, printable question bank.
 
 ## Current Features
 
