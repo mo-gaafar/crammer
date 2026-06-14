@@ -43,6 +43,43 @@ export interface Lecture {
 
 export type PodcastFormat = "qa" | "narrative" | "discussion";
 
+export type StudyTemplateCategory = "notes" | "review" | "assessment" | "reference";
+export type StudyTemplateSource = "built-in" | "community" | "user-created" | "premium";
+export type StudyMaterialType =
+  | "notes"
+  | "flashcards"
+  | "quiz"
+  | "glossary"
+  | "podcast_script"
+  | "study_guide"
+  | "lecture_study_doc";
+
+export interface StudyTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: StudyTemplateCategory;
+  type: StudyMaterialType;
+  source: StudyTemplateSource;
+  exports: string[];
+  prompt: string;
+}
+
+export interface StudyMaterial {
+  id: string;
+  lectureId: string;
+  templateId: string;
+  type: StudyMaterialType;
+  title: string;
+  description: string;
+  contentMarkdown: string;
+  contentJson?: unknown;
+  provider: "gemini";
+  model: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PodcastScript {
   id: string;
   lectureId: string;

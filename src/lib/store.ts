@@ -1,10 +1,18 @@
-import { AudioFile, Transcription, Lecture, PodcastScript, ProcessingStatus } from "@/types";
+import {
+  AudioFile,
+  Transcription,
+  Lecture,
+  PodcastScript,
+  ProcessingStatus,
+  StudyMaterial,
+} from "@/types";
 
 interface StoreData {
   audioFiles: Map<string, AudioFile>;
   transcriptions: Map<string, Transcription>;
   lectures: Map<string, Lecture>;
   podcastScripts: Map<string, PodcastScript>;
+  studyMaterials: Map<string, StudyMaterial>;
   status: ProcessingStatus;
 }
 
@@ -14,6 +22,7 @@ function createStore(): StoreData {
     transcriptions: new Map(),
     lectures: new Map(),
     podcastScripts: new Map(),
+    studyMaterials: new Map(),
     status: {
       totalFiles: 0,
       transcribedFiles: 0,
@@ -99,6 +108,19 @@ export const store = {
     return Array.from(getStore().podcastScripts.values()).filter(
       (s) => s.lectureId === lectureId
     );
+  },
+
+  // Study materials
+  addStudyMaterial(material: StudyMaterial): void {
+    getStore().studyMaterials.set(material.id, material);
+  },
+  getStudyMaterial(id: string): StudyMaterial | undefined {
+    return getStore().studyMaterials.get(id);
+  },
+  getStudyMaterialsForLecture(lectureId: string): StudyMaterial[] {
+    return Array.from(getStore().studyMaterials.values())
+      .filter((m) => m.lectureId === lectureId)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   },
 
   // Status

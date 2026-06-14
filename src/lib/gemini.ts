@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { GoogleAIFileManager } from "@google/generative-ai/server";
-import { AudioFile, Lecture, PodcastFormat, Transcription } from "@/types";
+import { AudioFile, Lecture, PodcastFormat, StudyTemplate, Transcription } from "@/types";
 import { withRetry } from "@/lib/retry";
 export { GEMINI_MODELS, DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
 import { DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
@@ -225,4 +225,59 @@ Include a compelling episode title and a 1-2 sentence episode description at the
     .trim();
 
   return { title: podcastTitle, description, script };
+}
+
+/**
+ * Generate a study material from a reusable template.
+ */
+export async function generateStudyMaterial(
+  lecture: Lecture,
+  audioFiles: AudioFile[],
+  template: StudyTemplate,
+  model: string = DEFAULT_GEMINI_MODEL
+): Promise<{ title: string; description: string; contentMarkdown: string }> {
+  const geminiModel = getClient().getGenerativeModel({ model });
+
+  const prompt = `You are an academic study-material designer.
+
+LECTURE DETAILS:
+Title: ${lecture.title}
+Key Topics: ${lecture.keyTopics.join(", ")}
+Summary: ${lecture.summary}
+Source Files: ${audioFiles.map((f) => f.originalName).join(", ")}
+
+TEMPLATE:
+Name: ${template.name}
+Type: ${template.type}
+Description: ${template.description}
+
+TEMPLATE INSTRUCTIONS:
+${template.prompt}
+
+FULL TRANSCRIPT:
+${lecture.fullTranscript.slice(0, 80_000)}
+
+Return the material in clean Markdown.
+Start with:
+TITLE: <specific title>
+DESCRIPTION: <one sentence describing the material>
+
+Then include the complete Markdown study material.`;
+
+  const result = await withRetry(() =>
+    geminiModel.generateContent(prompt, { timeout: GEMINI_TIMEOUT_MS })
+  );
+  const text = result.response.text();
+
+  const titleMatch = text.match(/TITLE:\s*(.+)/i);
+  const descMatch = text.match(/DESCRIPTION:\s*(.+)/i);
+
+  const title = titleMatch?.[1]?.trim() ?? `${lecture.title} - ${template.name}`;
+  const description = descMatch?.[1]?.trim() ?? template.description;
+  const contentMarkdown = text
+    .replace(/TITLE:\s*.+\n?/i, "")
+    .replace(/DESCRIPTION:\s*.+\n?/i, "")
+    .trim();
+
+  return { title, description, contentMarkdown };
 }

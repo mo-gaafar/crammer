@@ -19,11 +19,13 @@ export async function GET(
     .filter(Boolean);
 
   const podcastScripts = store.getPodcastScriptsForLecture(lecture.id);
+  const studyMaterials = store.getStudyMaterialsForLecture(lecture.id);
 
   return NextResponse.json({
     lecture,
     audioFiles,
     transcriptions,
     podcastScripts,
+    studyMaterials,
   });
 }

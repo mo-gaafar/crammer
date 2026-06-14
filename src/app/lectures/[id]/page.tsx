@@ -2,7 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { AudioFile, Lecture, PodcastFormat, PodcastScript, Transcription } from "@/types";
+import {
+  AudioFile,
+  Lecture,
+  PodcastFormat,
+  PodcastScript,
+  StudyMaterial,
+  StudyTemplate,
+  Transcription,
+} from "@/types";
 
 function formatDate(iso: string): string {
   try {
@@ -43,13 +51,14 @@ const FORMAT_OPTIONS: { value: PodcastFormat; label: string; icon: string; desc:
   },
 ];
 
-type Tab = "transcript" | "podcast";
+type Tab = "transcript" | "podcast" | "materials";
 
 interface LectureDetail {
   lecture: Lecture;
   audioFiles: AudioFile[];
   transcriptions: Transcription[];
   podcastScripts: PodcastScript[];
+  studyMaterials: StudyMaterial[];
 }
 
 export default function LectureDetailPage() {
@@ -68,6 +77,13 @@ export default function LectureDetailPage() {
   const [activeScript, setActiveScript] = useState<PodcastScript | null>(null);
   const [copied, setCopied] = useState(false);
   const [transcriptCopied, setTranscriptCopied] = useState(false);
+  const [templates, setTemplates] = useState<StudyTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("study-guide-core");
+  const [materials, setMaterials] = useState<StudyMaterial[]>([]);
+  const [activeMaterial, setActiveMaterial] = useState<StudyMaterial | null>(null);
+  const [generatingMaterial, setGeneratingMaterial] = useState(false);
+  const [materialError, setMaterialError] = useState<string | null>(null);
+  const [materialCopied, setMaterialCopied] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -76,13 +92,27 @@ export default function LectureDetailPage() {
       .then((d) => {
         setData(d);
         setScripts(d.podcastScripts ?? []);
+        setMaterials(d.studyMaterials ?? []);
         if (d.podcastScripts?.length > 0) {
           setActiveScript(d.podcastScripts[d.podcastScripts.length - 1]);
+        }
+        if (d.studyMaterials?.length > 0) {
+          setActiveMaterial(d.studyMaterials[d.studyMaterials.length - 1]);
         }
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    fetch("/api/study-materials")
+      .then((r) => r.json())
+      .then((d) => {
+        setTemplates(d.templates ?? []);
+        if (d.templates?.[0]?.id) setSelectedTemplateId(d.templates[0].id);
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleGeneratePodcast() {
     if (!data) return;
@@ -136,6 +166,40 @@ export default function LectureDetailPage() {
     setTimeout(() => setTranscriptCopied(false), 2000);
   }
 
+  async function handleGenerateMaterial() {
+    if (!data) return;
+    setGeneratingMaterial(true);
+    setMaterialError(null);
+    setTab("materials");
+
+    try {
+      const res = await fetch("/api/study-materials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lectureId: id, templateId: selectedTemplateId }),
+      });
+      const result = await res.json();
+
+      if (!res.ok) throw new Error(result.error ?? "Generation failed");
+
+      const newMaterial: StudyMaterial = result.material;
+      setMaterials((prev) => [...prev, newMaterial]);
+      setActiveMaterial(newMaterial);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setMaterialError(msg);
+    } finally {
+      setGeneratingMaterial(false);
+    }
+  }
+
+  async function handleCopyMaterial() {
+    if (!activeMaterial) return;
+    await navigator.clipboard.writeText(activeMaterial.contentMarkdown);
+    setMaterialCopied(true);
+    setTimeout(() => setMaterialCopied(false), 2000);
+  }
+
   function handleDownload() {
     if (!activeScript) return;
     const blob = new Blob(
@@ -146,6 +210,20 @@ export default function LectureDetailPage() {
     const a = document.createElement("a");
     a.href = url;
     a.download = `${activeScript.title.replace(/[^a-z0-9]/gi, "_")}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleDownloadMaterial() {
+    if (!activeMaterial) return;
+    const blob = new Blob(
+      [`${activeMaterial.title}\n\n${activeMaterial.description}\n\n${activeMaterial.contentMarkdown}`],
+      { type: "text/markdown" }
+    );
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${activeMaterial.title.replace(/[^a-z0-9]/gi, "_")}.md`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -242,10 +320,10 @@ export default function LectureDetailPage() {
         </div>
       </div>
 
-      {/* Tabs: Transcript / Podcast */}
+      {/* Tabs: Transcript / Study Materials / Podcast */}
       <div>
         <div className="flex gap-1 border-b border-slate-700 mb-6">
-          {(["transcript", "podcast"] as Tab[]).map((t) => (
+          {(["transcript", "materials", "podcast"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -255,7 +333,11 @@ export default function LectureDetailPage() {
                   : "border-transparent text-slate-500 hover:text-slate-300"
               }`}
             >
-              {t === "transcript" ? "📄 Transcript" : "🎙️ Podcast Script"}
+              {t === "transcript"
+                ? "📄 Transcript"
+                : t === "materials"
+                  ? "📚 Study Materials"
+                  : "🎙️ Podcast Script"}
             </button>
           ))}
         </div>
@@ -282,6 +364,159 @@ export default function LectureDetailPage() {
                 {lecture.fullTranscript}
               </pre>
             </div>
+          </div>
+        )}
+
+        {/* Study Materials Tab */}
+        {tab === "materials" && (
+          <div className="space-y-6">
+            <div className="card space-y-4">
+              <div>
+                <h2 className="section-title">Generate Study Material</h2>
+                <p className="text-slate-400 text-sm mt-1">
+                  Choose a reusable template flow. Community templates live beside built-in ones
+                  so contributors can add new study outputs cleanly.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {templates.map((template) => (
+                  <button
+                    key={template.id}
+                    onClick={() => setSelectedTemplateId(template.id)}
+                    disabled={generatingMaterial}
+                    className={`text-left p-4 rounded-xl border-2 transition-all ${
+                      selectedTemplateId === template.id
+                        ? "border-indigo-500 bg-indigo-500/10"
+                        : "border-slate-700 bg-slate-900/50 hover:border-slate-600"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="font-medium text-slate-200 text-sm">{template.name}</div>
+                      <span
+                        className={
+                          template.source === "community" ? "badge-green" : "badge-indigo"
+                        }
+                      >
+                        {template.source}
+                      </span>
+                    </div>
+                    <div className="text-slate-500 text-xs mt-2 leading-relaxed">
+                      {template.description}
+                    </div>
+                    <div className="text-slate-400 text-xs mt-3 uppercase">
+                      {template.type.replace(/_/g, " ")}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {materialError && (
+                <div className="bg-red-950/50 border border-red-800 rounded-lg p-3 text-red-300 text-sm">
+                  {materialError}
+                </div>
+              )}
+
+              <button
+                onClick={handleGenerateMaterial}
+                disabled={generatingMaterial || templates.length === 0}
+                className="btn-primary flex items-center gap-2"
+              >
+                {generatingMaterial ? (
+                  <>
+                    <span className="animate-spin">⚙️</span>
+                    Gemini is building the material...
+                  </>
+                ) : (
+                  <>
+                    <span>✨</span>
+                    Generate {templates.find((t) => t.id === selectedTemplateId)?.name ?? "Material"}
+                  </>
+                )}
+              </button>
+            </div>
+
+            {materials.length > 1 && (
+              <div className="flex gap-2 flex-wrap">
+                <span className="text-xs text-slate-500 self-center">Generated:</span>
+                {materials.map((material) => {
+                  const template = templates.find((t) => t.id === material.templateId);
+                  return (
+                    <button
+                      key={material.id}
+                      onClick={() => setActiveMaterial(material)}
+                      className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                        activeMaterial?.id === material.id
+                          ? "border-indigo-500 text-indigo-300 bg-indigo-500/10"
+                          : "border-slate-700 text-slate-400 hover:border-slate-500"
+                      }`}
+                    >
+                      {template?.name ?? material.type.replace(/_/g, " ")}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {activeMaterial && !generatingMaterial && (
+              <div className="card space-y-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="font-bold text-slate-100 text-lg leading-snug">
+                      {activeMaterial.title}
+                    </h3>
+                    <p className="text-slate-400 text-sm mt-1">{activeMaterial.description}</p>
+                    <div className="flex items-center gap-3 mt-2">
+                      <span className="badge-indigo">
+                        {activeMaterial.type.replace(/_/g, " ")}
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        {activeMaterial.contentMarkdown.split(" ").length.toLocaleString()} words
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={handleCopyMaterial}
+                      className="btn-secondary text-xs py-1.5 px-3"
+                    >
+                      {materialCopied ? "✅ Copied" : "📋 Copy"}
+                    </button>
+                    <button
+                      onClick={handleDownloadMaterial}
+                      className="btn-secondary text-xs py-1.5 px-3"
+                    >
+                      ⬇️ Download
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-slate-900/50 rounded-xl p-5 max-h-[600px] overflow-y-auto">
+                  <pre className="podcast-script whitespace-pre-wrap font-sans text-sm leading-relaxed">
+                    {activeMaterial.contentMarkdown}
+                  </pre>
+                </div>
+              </div>
+            )}
+
+            {generatingMaterial && (
+              <div className="card flex items-center justify-center py-16 space-y-4 flex-col text-center">
+                <div className="text-5xl animate-pulse-slow">✨</div>
+                <p className="text-slate-300 font-medium">
+                  Gemini is shaping this lecture into a study material...
+                </p>
+                <p className="text-slate-500 text-sm">
+                  Longer transcripts can take about a minute.
+                </p>
+              </div>
+            )}
+
+            {materials.length === 0 && !generatingMaterial && (
+              <div className="card text-center py-12 space-y-3 text-slate-500">
+                <div className="text-4xl">📚</div>
+                <p>No study materials generated yet. Choose a template and hit Generate.</p>
+              </div>
+            )}
           </div>
         )}
 
