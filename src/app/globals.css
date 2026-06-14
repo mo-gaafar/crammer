@@ -105,3 +105,77 @@
 .podcast-script p {
   @apply mb-3;
 }
+
+/* Landing page motion */
+.landing-wave {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(103, 232, 249, 0.85), rgba(251, 113, 133, 0.55), transparent);
+  transform-origin: center;
+  animation: landing-wave-drift 9s ease-in-out infinite;
+}
+
+.landing-wave::before,
+.landing-wave::after {
+  content: "";
+  position: absolute;
+  inset: -10px 0;
+  background: inherit;
+  filter: blur(14px);
+  opacity: 0.55;
+}
+
+.landing-wave-a {
+  top: 28%;
+  transform: rotate(-8deg);
+}
+
+.landing-wave-b {
+  top: 52%;
+  animation-delay: -3s;
+  transform: rotate(5deg);
+}
+
+.landing-wave-c {
+  top: 73%;
+  animation-delay: -6s;
+  transform: rotate(-3deg);
+}
+
+.landing-eq {
+  animation: landing-eq 1.45s ease-in-out infinite;
+  transform-origin: bottom;
+}
+
+@keyframes landing-wave-drift {
+  0%, 100% {
+    opacity: 0.18;
+    translate: -4% 0;
+    scale: 0.96 1;
+  }
+  50% {
+    opacity: 0.72;
+    translate: 4% -10px;
+    scale: 1.04 1;
+  }
+}
+
+@keyframes landing-eq {
+  0%, 100% {
+    transform: scaleY(0.45);
+    opacity: 0.45;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-wave,
+  .landing-eq {
+    animation: none;
+  }
+}

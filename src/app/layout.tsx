@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
-import "./globals.css";
 import Link from "next/link";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Crammer — AI Study Voice Notes",
+  title: "Crammer - AI Study Materials",
   description:
-    "Upload bulk voice notes, transcribe them with Deepgram, group into lectures, and generate podcast scripts with AI.",
+    "Turn lectures, recordings, and transcripts into study guides, flashcards, quizzes, and review podcasts.",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
@@ -17,11 +20,15 @@ export default function RootLayout({
     <html lang="en">
       <body className="font-sans">
         <div className="min-h-screen flex flex-col">
-          {/* Nav */}
           <nav className="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-50">
             <div className="max-w-6xl mx-auto px-4 flex items-center gap-8 h-14">
-              <Link href="/" className="flex items-center gap-2 font-bold text-lg text-slate-100">
-                <span className="text-2xl">🎙️</span>
+              <Link
+                href="/"
+                className="flex items-center gap-2 font-bold text-lg text-slate-100"
+              >
+                <span className="grid h-7 w-7 place-items-center rounded-md bg-indigo-600 text-sm font-black text-indigo-50">
+                  C
+                </span>
                 <span>
                   <span className="text-indigo-400">Cram</span>mer
                 </span>
@@ -46,12 +53,11 @@ export default function RootLayout({
             </div>
           </nav>
 
-          {/* Main content */}
           <main className="flex-1">{children}</main>
 
-          {/* Footer */}
           <footer className="border-t border-slate-800 py-4 text-center text-xs text-slate-600">
-            Crammer — AI Study Voice Notes &middot; Deepgram transcription &middot; Gemini lecture inference
+            Crammer - AI study materials &middot; Deepgram transcription
+            &middot; Gemini lecture inference
           </footer>
         </div>
       </body>
