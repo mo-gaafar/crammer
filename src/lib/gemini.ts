@@ -399,6 +399,10 @@ function splitForTts(script: string): string[] {
   return chunks;
 }
 
+export function countScriptAudioChunks(script: string): number {
+  return splitForTts(script).length;
+}
+
 async function synthesizePcmChunk(text: string, chunkNumber: number, totalChunks: number): Promise<Buffer> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY is not set in environment variables");

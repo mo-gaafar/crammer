@@ -98,13 +98,14 @@ export default function HomePage() {
     );
   }
 
-  async function refreshTextAudioArtifact(id: string) {
+  async function refreshTextAudioArtifact(id: string): Promise<TextAudioArtifact | undefined> {
     const res = await fetch("/api/text-audio");
     const data = await res.json();
     const artifacts: TextAudioArtifact[] = data.artifacts ?? [];
     setTextAudioArtifacts(artifacts);
     const updated = artifacts.find((item) => item.id === id);
     if (updated) setActiveTextAudio((prev) => (prev?.id === id ? updated : prev));
+    return updated;
   }
 
   // Settings
@@ -254,11 +255,6 @@ export default function HomePage() {
       audioError: undefined,
     });
 
-    const progressTimer = window.setInterval(() => {
-      refreshTextAudioArtifact(artifact.id).catch(() => {});
-    }, 1500);
-
-    let requestFailed = false;
     try {
       const res = await fetch(`/api/text-audio/${artifact.id}`, { method: "POST" });
       const data = await res.json();
@@ -266,8 +262,17 @@ export default function HomePage() {
 
       const updated: TextAudioArtifact = data.artifact;
       mergeTextAudioArtifact(updated);
+
+      let latest = updated;
+      while (latest.audioStatus === "generating") {
+        await new Promise((resolve) => window.setTimeout(resolve, 1500));
+        latest = (await refreshTextAudioArtifact(artifact.id)) ?? latest;
+      }
+
+      if (latest.audioStatus === "error") {
+        throw new Error(latest.audioError ?? "Audio generation failed");
+      }
     } catch (err) {
-      requestFailed = true;
       const message = err instanceof Error ? err.message : String(err);
       setTextAudioError(`Audio failed: ${message}`);
       mergeTextAudioArtifact({
@@ -276,10 +281,7 @@ export default function HomePage() {
         audioError: message,
       });
     } finally {
-      window.clearInterval(progressTimer);
-      if (!requestFailed) {
-        await refreshTextAudioArtifact(artifact.id).catch(() => {});
-      }
+      await refreshTextAudioArtifact(artifact.id).catch(() => {});
       setGeneratingAudioId(null);
     }
   }
