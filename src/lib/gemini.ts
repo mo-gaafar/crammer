@@ -7,7 +7,7 @@ import { DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
 
 const GEMINI_TIMEOUT_MS = 600_000; // 10 min — large audio files need time
 const TEXT_AUDIO_TIMEOUT_MS = 120_000;
-const TEXT_AUDIO_TTS_ATTEMPTS = 2;
+const TEXT_AUDIO_TTS_ATTEMPTS = 3;
 const TTS_CHUNK_MAX_CHARS = 1_200;
 const GEMINI_TTS_MODEL = "gemini-2.5-flash-preview-tts";
 
@@ -411,8 +411,8 @@ async function synthesizePcmChunk(text: string, chunkNumber: number, totalChunks
   let response: Response;
   try {
     response = await withRetry(
-      () =>
-        fetch(url, {
+      async () => {
+        const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
           signal: AbortSignal.timeout(TEXT_AUDIO_TIMEOUT_MS),
@@ -436,18 +436,22 @@ async function synthesizePcmChunk(text: string, chunkNumber: number, totalChunks
             },
             model: GEMINI_TTS_MODEL,
           }),
-        }),
+        });
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(`${res.status}: ${errorText.slice(0, 300)}`);
+        }
+        return res;
+      },
       TEXT_AUDIO_TTS_ATTEMPTS,
       2000
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    if (message.startsWith("4") || message.startsWith("5")) {
+      throw new Error(`Gemini TTS failed: ${message}`);
+    }
     throw new Error(`Could not reach Gemini TTS. Check internet access, GEMINI_API_KEY, and TTS model access. Details: ${message}`);
-  }
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Gemini TTS failed: ${errorText.slice(0, 300)}`);
   }
 
   const data = await response.json();
