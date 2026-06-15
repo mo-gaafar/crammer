@@ -81,6 +81,7 @@ export default function HomePage() {
   const [textAudioArtifacts, setTextAudioArtifacts] = useState<TextAudioArtifact[]>([]);
   const [activeTextAudio, setActiveTextAudio] = useState<TextAudioArtifact | null>(null);
   const [generatingTextAudio, setGeneratingTextAudio] = useState(false);
+  const [generatingAudioId, setGeneratingAudioId] = useState<string | null>(null);
   const [textAudioError, setTextAudioError] = useState<string | null>(null);
   const [activeToolTab, setActiveToolTab] = useState<ToolTab>("recordings");
 
@@ -194,9 +195,6 @@ export default function HomePage() {
       const artifact: TextAudioArtifact = data.artifact;
       setTextAudioArtifacts((prev) => [artifact, ...prev]);
       setActiveTextAudio(artifact);
-      if (artifact.audioError) {
-        setTextAudioError(`Script generated, but audio failed: ${artifact.audioError}`);
-      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setTextAudioError(
@@ -206,6 +204,30 @@ export default function HomePage() {
       );
     } finally {
       setGeneratingTextAudio(false);
+    }
+  }
+
+  async function handleCreateAudio(artifact: TextAudioArtifact) {
+    setGeneratingAudioId(artifact.id);
+    setTextAudioError(null);
+
+    try {
+      const res = await fetch(`/api/text-audio/${artifact.id}`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not create audio");
+
+      const updated: TextAudioArtifact = data.artifact;
+      setTextAudioArtifacts((prev) =>
+        prev.map((item) => (item.id === updated.id ? { ...item, ...updated } : item))
+      );
+      setActiveTextAudio((prev) =>
+        prev?.id === updated.id ? { ...prev, ...updated } : prev
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setTextAudioError(`Audio failed: ${message}`);
+    } finally {
+      setGeneratingAudioId(null);
     }
   }
 
@@ -478,6 +500,7 @@ export default function HomePage() {
     setDriveError(null);
     setTextAudioArtifacts([]);
     setActiveTextAudio(null);
+    setGeneratingAudioId(null);
     setTextAudioError(null);
   }
 
@@ -579,7 +602,7 @@ export default function HomePage() {
       <div className="flex gap-1 rounded-xl border border-slate-800 bg-slate-900/70 p-1">
         {[
           { id: "recordings", label: "Recordings", detail: `${files.length} file${files.length !== 1 ? "s" : ""}` },
-          { id: "textAudio", label: "Text to Audio", detail: `${textAudioArtifacts.length} audio` },
+          { id: "textAudio", label: "Study Audio", detail: `${textAudioArtifacts.length} script${textAudioArtifacts.length !== 1 ? "s" : ""}` },
           { id: "drive", label: "Drive Import", detail: driveListing ? `${driveSelected.size} selected` : "folder" },
         ].map((tab) => (
           <button
@@ -649,15 +672,15 @@ export default function HomePage() {
       <div className="card space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="section-title text-sm">Text to Q&amp;A Audio</h2>
+            <h2 className="section-title text-sm">Text to Study Audio</h2>
             <p className="text-xs text-slate-500 mt-1">
-              Paste notes or load a text document. Crammer turns it into a detailed Q&amp;A study
-              loop, then creates a WAV file named from the source.
+              Paste notes or load a text document. Crammer turns it into a detailed monologue
+              first, then you can create a WAV file named from the source.
             </p>
           </div>
           <button
             onClick={() => textFileInputRef.current?.click()}
-            disabled={generatingTextAudio || isWorking}
+            disabled={generatingTextAudio || generatingAudioId !== null || isWorking}
             className="btn-secondary text-xs py-1.5 px-3 shrink-0"
           >
             Load document
@@ -674,7 +697,7 @@ export default function HomePage() {
         <input
           value={textSourceName}
           onChange={(e) => setTextSourceName(e.target.value)}
-          disabled={generatingTextAudio || isWorking}
+          disabled={generatingTextAudio || generatingAudioId !== null || isWorking}
           className="input text-sm"
           placeholder="Source name, used for the audio filename"
         />
@@ -687,7 +710,7 @@ export default function HomePage() {
               if (firstWords) setTextSourceName(firstWords);
             }
           }}
-          disabled={generatingTextAudio || isWorking}
+          disabled={generatingTextAudio || generatingAudioId !== null || isWorking}
           className="input min-h-40 resize-y text-sm leading-relaxed"
           placeholder="Paste lecture notes, textbook excerpts, slides text, or any study material here..."
         />
@@ -707,14 +730,14 @@ export default function HomePage() {
             {generatingTextAudio ? (
               <>
                 <span className="animate-spin">...</span>
-                Creating script and audio...
+                Creating study script...
               </>
             ) : (
-              "Generate Q&A Audio"
+              "Generate Study Script"
             )}
           </button>
           <span className="text-xs text-slate-500">
-            Default script: repeated questions, clear answers, and short recap checkpoints.
+            The script repeats dense ideas in simpler wording before audio generation.
           </span>
         </div>
 
@@ -736,6 +759,15 @@ export default function HomePage() {
                 >
                   Download WAV
                 </a>
+              )}
+              {!activeTextAudio.audioUrl && (
+                <button
+                  onClick={() => handleCreateAudio(activeTextAudio)}
+                  disabled={generatingAudioId === activeTextAudio.id}
+                  className="btn-secondary text-xs py-1.5 px-3 shrink-0"
+                >
+                  {generatingAudioId === activeTextAudio.id ? "Creating audio chunks..." : "Create audio"}
+                </button>
               )}
             </div>
             {activeTextAudio.audioUrl ? (

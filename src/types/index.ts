@@ -95,10 +95,11 @@ export interface TextAudioArtifact {
   sourceName: string;
   title: string;
   script: string;
-  audioPath: string;
-  audioFileName: string;
+  audioPath?: string;
+  audioFileName?: string;
   mimeType: "audio/wav";
   createdAt: string; // ISO string
+  audioError?: string;
 }
 
 export interface ProcessingStatus {

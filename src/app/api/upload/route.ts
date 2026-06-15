@@ -95,7 +95,9 @@ export async function DELETE() {
     }
     for (const artifact of textAudioArtifacts) {
       try {
-        if (fs.existsSync(artifact.audioPath)) fs.unlinkSync(artifact.audioPath);
+        if (artifact.audioPath && fs.existsSync(artifact.audioPath)) {
+          fs.unlinkSync(artifact.audioPath);
+        }
       } catch {
         // ignore
       }

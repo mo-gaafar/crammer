@@ -7,6 +7,7 @@ import { DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
 
 const GEMINI_TIMEOUT_MS = 600_000; // 10 min — large audio files need time
 const TEXT_AUDIO_TIMEOUT_MS = 120_000;
+const TTS_CHUNK_MAX_CHARS = 2_800;
 const GEMINI_TTS_MODEL = "gemini-2.5-flash-preview-tts";
 
 const getClient = () => {
@@ -302,13 +303,15 @@ ${text.slice(0, 80_000)}
 Turn this source into a clear, readable audio script that can be spoken naturally.
 - Preserve the important ideas and sequence.
 - Remove formatting artifacts, repeated headers, citations clutter, and text that sounds awkward aloud.
+- Write as a single-narrator monologue, not a dialogue and not Q&A.
+- Cover every meaningful detail from the pasted source. Do not summarize away specifics.
+- Keep the source order unless rearranging slightly makes the explanation easier to follow.
+- Slow down mentally dense ideas by repeating them in a second simpler wording.
+- For concepts that take time to process, restate the key point, then say why it matters.
+- Use gentle checkpoint lines like "The part to hold onto is..." before important takeaways.
 - Add short transitions where they improve comprehension.
-- Keep it concise, but do not omit important concepts.
-- Use a detailed Q&A learning loop by default.
-- Have HOST ask focused questions and GUIDE answer in short, complete chunks.
-- After each major answer, briefly repeat the question in simpler words and give a one-sentence recap.
-- Add gentle checkpoint lines like "Here is the part to remember" before important takeaways.
 - Keep the tone calm, direct, and low-pressure for a listener who has bad focus or feels stressed.
+- Avoid speaker labels such as HOST, GUIDE, Student, Expert, Alex, or Riley.
 
 Return:
 TITLE: <short title based on the source>
@@ -353,7 +356,49 @@ function pcmToWav(pcm: Buffer, sampleRate = 24000, channels = 1, bitsPerSample =
   return Buffer.concat([header, pcm]);
 }
 
-export async function synthesizeScriptAudio(script: string): Promise<Buffer> {
+function splitForTts(script: string): string[] {
+  const blocks = script
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+  const chunks: string[] = [];
+  let current = "";
+
+  for (const block of blocks) {
+    if (block.length > TTS_CHUNK_MAX_CHARS) {
+      if (current) {
+        chunks.push(current);
+        current = "";
+      }
+      const sentences = block.match(/[^.!?]+[.!?]+|\S.+$/g) ?? [block];
+      let sentenceChunk = "";
+      for (const sentence of sentences) {
+        const next = sentenceChunk ? `${sentenceChunk} ${sentence.trim()}` : sentence.trim();
+        if (next.length > TTS_CHUNK_MAX_CHARS && sentenceChunk) {
+          chunks.push(sentenceChunk);
+          sentenceChunk = sentence.trim();
+        } else {
+          sentenceChunk = next;
+        }
+      }
+      if (sentenceChunk) chunks.push(sentenceChunk);
+      continue;
+    }
+
+    const next = current ? `${current}\n\n${block}` : block;
+    if (next.length > TTS_CHUNK_MAX_CHARS && current) {
+      chunks.push(current);
+      current = block;
+    } else {
+      current = next;
+    }
+  }
+
+  if (current) chunks.push(current);
+  return chunks;
+}
+
+async function synthesizePcmChunk(text: string, chunkNumber: number, totalChunks: number): Promise<Buffer> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY is not set in environment variables");
 
@@ -370,7 +415,7 @@ export async function synthesizeScriptAudio(script: string): Promise<Buffer> {
             {
               parts: [
                 {
-                  text: `Read this script aloud in a warm, clear study-podcast voice:\n\n${script}`,
+                  text: `Read this study script aloud in a warm, clear voice. This is part ${chunkNumber} of ${totalChunks}, so continue naturally without a big introduction or ending:\n\n${text}`,
                 },
               ],
             },
@@ -402,5 +447,17 @@ export async function synthesizeScriptAudio(script: string): Promise<Buffer> {
   )?.inlineData;
   if (!inlineData?.data) throw new Error("Gemini TTS returned no audio data");
 
-  return pcmToWav(Buffer.from(inlineData.data, "base64"));
+  return Buffer.from(inlineData.data, "base64");
+}
+
+export async function synthesizeScriptAudio(script: string): Promise<Buffer> {
+  const chunks = splitForTts(script);
+  if (chunks.length === 0) throw new Error("Script is empty");
+
+  const pcmChunks: Buffer[] = [];
+  for (let i = 0; i < chunks.length; i++) {
+    pcmChunks.push(await synthesizePcmChunk(chunks[i], i + 1, chunks.length));
+  }
+
+  return pcmToWav(Buffer.concat(pcmChunks));
 }

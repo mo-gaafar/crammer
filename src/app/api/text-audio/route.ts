@@ -1,25 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
 import { v4 as uuidv4 } from "uuid";
-import { generateReadableScriptFromText, synthesizeScriptAudio } from "@/lib/gemini";
-import { ensureUploadDir, getUploadDir } from "@/lib/metadata";
+import { generateReadableScriptFromText } from "@/lib/gemini";
 import { store } from "@/lib/store";
 import { TextAudioArtifact } from "@/types";
 
-function safeFileStem(name: string): string {
-  const stem = path.basename(name, path.extname(name)).trim() || "pasted-text";
-  return stem
-    .replace(/[^a-z0-9]+/gi, "_")
-    .replace(/^_+|_+$/g, "")
-    .slice(0, 80)
-    .toLowerCase() || "pasted_text";
-}
-
 export async function POST(request: NextRequest) {
   try {
-    ensureUploadDir();
-
     const body = await request.json();
     const { sourceName, text, geminiModel } = body as {
       sourceName?: string;
@@ -45,44 +31,12 @@ export async function POST(request: NextRequest) {
       geminiModel
     );
     const id = uuidv4();
-    const audioFileName = `${safeFileStem(cleanSourceName)}_script_audio.wav`;
-    const audioPath = path.join(getUploadDir(), `${id}.wav`);
-
-    let audio: Buffer | null = null;
-    let audioError: string | undefined;
-    try {
-      audio = await synthesizeScriptAudio(generated.script);
-      fs.writeFileSync(audioPath, audio);
-    } catch (err) {
-      audioError = err instanceof Error ? err.message : String(err);
-    }
-
-    if (!audio) {
-      return NextResponse.json(
-        {
-          artifact: {
-            id,
-            sourceName: cleanSourceName,
-            title: generated.title,
-            script: generated.script,
-            audioFileName,
-            mimeType: "audio/wav",
-            createdAt: new Date().toISOString(),
-            audioUrl: null,
-            audioError,
-          },
-        },
-        { status: 207 }
-      );
-    }
 
     const artifact: TextAudioArtifact = {
       id,
       sourceName: cleanSourceName,
       title: generated.title,
       script: generated.script,
-      audioPath,
-      audioFileName,
       mimeType: "audio/wav",
       createdAt: new Date().toISOString(),
     };
@@ -98,7 +52,7 @@ export async function POST(request: NextRequest) {
         audioFileName: artifact.audioFileName,
         mimeType: artifact.mimeType,
         createdAt: artifact.createdAt,
-        audioUrl: `/api/text-audio/${artifact.id}`,
+        audioUrl: artifact.audioPath ? `/api/text-audio/${artifact.id}` : null,
       },
     });
   } catch (err) {
@@ -116,7 +70,8 @@ export async function GET() {
     audioFileName: artifact.audioFileName,
     mimeType: artifact.mimeType,
     createdAt: artifact.createdAt,
-    audioUrl: `/api/text-audio/${artifact.id}`,
+    audioUrl: artifact.audioPath ? `/api/text-audio/${artifact.id}` : null,
+    audioError: artifact.audioError,
   }));
 
   return NextResponse.json({ artifacts });

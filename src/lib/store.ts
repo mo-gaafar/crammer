@@ -133,6 +133,13 @@ export const store = {
   getTextAudioArtifact(id: string): TextAudioArtifact | undefined {
     return getStore().textAudioArtifacts.get(id);
   },
+  updateTextAudioArtifact(id: string, updates: Partial<TextAudioArtifact>): void {
+    const store = getStore();
+    const existing = store.textAudioArtifacts.get(id);
+    if (existing) {
+      store.textAudioArtifacts.set(id, { ...existing, ...updates });
+    }
+  },
   getAllTextAudioArtifacts(): TextAudioArtifact[] {
     return Array.from(getStore().textAudioArtifacts.values()).sort((a, b) =>
       b.createdAt.localeCompare(a.createdAt)
