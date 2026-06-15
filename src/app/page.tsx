@@ -14,6 +14,15 @@ interface FileEntry {
   transcript?: string;
 }
 
+interface TextAudioArtifact {
+  id: string;
+  sourceName: string;
+  title: string;
+  script: string;
+  audioFileName: string;
+  audioUrl: string;
+}
+
 type Phase = "idle" | "uploading" | "transcribing" | "processing" | "complete" | "error";
 type SttProvider = "deepgram" | "gemini";
 
@@ -48,6 +57,7 @@ function StatusBadge({ status }: { status: FileEntry["status"] }) {
 export default function HomePage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textFileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [phase, setPhase] = useState<Phase>("idle");
@@ -64,6 +74,12 @@ export default function HomePage() {
     files: { id: string; name: string; size: number; mimeType: string; alreadyImported: boolean; supported: boolean }[];
   }>(null);
   const [driveSelected, setDriveSelected] = useState<Set<string>>(new Set());
+  const [textSourceName, setTextSourceName] = useState("Pasted text");
+  const [pastedText, setPastedText] = useState("");
+  const [textAudioArtifacts, setTextAudioArtifacts] = useState<TextAudioArtifact[]>([]);
+  const [activeTextAudio, setActiveTextAudio] = useState<TextAudioArtifact | null>(null);
+  const [generatingTextAudio, setGeneratingTextAudio] = useState(false);
+  const [textAudioError, setTextAudioError] = useState<string | null>(null);
 
   // Settings
   const [sttProvider, setSttProvider] = useState<SttProvider>("deepgram");
@@ -101,6 +117,15 @@ export default function HomePage() {
         }
       })
       .catch(() => {}); // Non-fatal — server may not have state
+
+    fetch("/api/text-audio")
+      .then((r) => r.json())
+      .then((data) => {
+        const artifacts: TextAudioArtifact[] = data.artifacts ?? [];
+        setTextAudioArtifacts(artifacts);
+        if (artifacts[0]) setActiveTextAudio(artifacts[0]);
+      })
+      .catch(() => {});
   }, []);
 
   function saveSttProvider(p: SttProvider) {
@@ -127,6 +152,50 @@ export default function HomePage() {
       else next.add(id);
       return next;
     });
+  }
+
+  async function onTextFileInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      setPastedText(text);
+      setTextSourceName(file.name);
+      setTextAudioError(null);
+    } catch {
+      setTextAudioError("Could not read that document. Try a plain text or Markdown file.");
+    } finally {
+      e.target.value = "";
+    }
+  }
+
+  async function handleGenerateTextAudio() {
+    if (!pastedText.trim()) return;
+    setGeneratingTextAudio(true);
+    setTextAudioError(null);
+
+    try {
+      const res = await fetch("/api/text-audio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceName: textSourceName || "Pasted text",
+          text: pastedText,
+          geminiModel,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not generate audio");
+
+      const artifact: TextAudioArtifact = data.artifact;
+      setTextAudioArtifacts((prev) => [artifact, ...prev]);
+      setActiveTextAudio(artifact);
+    } catch (err) {
+      setTextAudioError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setGeneratingTextAudio(false);
+    }
   }
 
   // ── Drag & Drop handlers ─────────────────────────────────────────────────
@@ -396,6 +465,9 @@ export default function HomePage() {
     setExpandedTranscripts(new Set());
     setDriveUrl("");
     setDriveError(null);
+    setTextAudioArtifacts([]);
+    setActiveTextAudio(null);
+    setTextAudioError(null);
   }
 
   // ── Computed state ───────────────────────────────────────────────────────
@@ -527,6 +599,123 @@ export default function HomePage() {
           <p className="text-indigo-400 text-sm mt-3 font-medium">
             {files.length} file(s) ready &mdash; drop more to add
           </p>
+        )}
+      </div>
+
+      {/* Text to audio */}
+      <div className="card space-y-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="section-title text-sm">Text to Q&amp;A Audio</h2>
+            <p className="text-xs text-slate-500 mt-1">
+              Paste notes or load a text document. Crammer turns it into a detailed Q&amp;A study
+              loop, then creates a WAV file named from the source.
+            </p>
+          </div>
+          <button
+            onClick={() => textFileInputRef.current?.click()}
+            disabled={generatingTextAudio || isWorking}
+            className="btn-secondary text-xs py-1.5 px-3 shrink-0"
+          >
+            Load document
+          </button>
+          <input
+            ref={textFileInputRef}
+            type="file"
+            accept=".txt,.md,.markdown,text/plain,text/markdown"
+            className="hidden"
+            onChange={onTextFileInput}
+          />
+        </div>
+
+        <input
+          value={textSourceName}
+          onChange={(e) => setTextSourceName(e.target.value)}
+          disabled={generatingTextAudio || isWorking}
+          className="input text-sm"
+          placeholder="Source name, used for the audio filename"
+        />
+        <textarea
+          value={pastedText}
+          onChange={(e) => {
+            setPastedText(e.target.value);
+            if (textSourceName === "Pasted text") {
+              const firstWords = e.target.value.trim().split(/\s+/).slice(0, 6).join(" ");
+              if (firstWords) setTextSourceName(firstWords);
+            }
+          }}
+          disabled={generatingTextAudio || isWorking}
+          className="input min-h-40 resize-y text-sm leading-relaxed"
+          placeholder="Paste lecture notes, textbook excerpts, slides text, or any study material here..."
+        />
+
+        {textAudioError && (
+          <div className="bg-red-950/50 border border-red-800 rounded-lg p-3 text-red-300 text-sm">
+            {textAudioError}
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-3 items-center">
+          <button
+            onClick={handleGenerateTextAudio}
+            disabled={!pastedText.trim() || generatingTextAudio || isWorking}
+            className="btn-primary flex items-center gap-2"
+          >
+            {generatingTextAudio ? (
+              <>
+                <span className="animate-spin">...</span>
+                Creating script and audio...
+              </>
+            ) : (
+              "Generate Q&A Audio"
+            )}
+          </button>
+          <span className="text-xs text-slate-500">
+            Default script: repeated questions, clear answers, and short recap checkpoints.
+          </span>
+        </div>
+
+        {activeTextAudio && (
+          <div className="bg-slate-900/50 rounded-xl p-4 space-y-3 border border-slate-800">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <h3 className="font-semibold text-slate-100 truncate">{activeTextAudio.title}</h3>
+                <p className="text-xs text-slate-500 truncate">
+                  {activeTextAudio.sourceName} -&gt; {activeTextAudio.audioFileName}
+                </p>
+              </div>
+              <a
+                href={activeTextAudio.audioUrl}
+                download={activeTextAudio.audioFileName}
+                className="btn-secondary text-xs py-1.5 px-3 shrink-0"
+              >
+                Download WAV
+              </a>
+            </div>
+            <audio controls src={activeTextAudio.audioUrl} className="w-full" />
+            <div className="bg-slate-800/60 rounded-lg p-3 text-xs text-slate-300 leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto border border-slate-700">
+              {activeTextAudio.script}
+            </div>
+          </div>
+        )}
+
+        {textAudioArtifacts.length > 1 && (
+          <div className="flex gap-2 flex-wrap">
+            <span className="text-xs text-slate-500 self-center">Generated:</span>
+            {textAudioArtifacts.map((artifact) => (
+              <button
+                key={artifact.id}
+                onClick={() => setActiveTextAudio(artifact)}
+                className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                  activeTextAudio?.id === artifact.id
+                    ? "border-indigo-500 text-indigo-300 bg-indigo-500/10"
+                    : "border-slate-700 text-slate-400 hover:border-slate-500"
+                }`}
+              >
+                {artifact.sourceName}
+              </button>
+            ))}
+          </div>
         )}
       </div>
 

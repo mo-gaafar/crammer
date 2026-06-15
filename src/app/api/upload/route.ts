@@ -78,6 +78,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE() {
   try {
     const files = store.getAllAudioFiles();
+    const textAudioArtifacts = store.getAllTextAudioArtifacts();
     for (const f of files) {
       try {
         if (fs.existsSync(f.savedPath)) fs.unlinkSync(f.savedPath);
@@ -90,6 +91,13 @@ export async function DELETE() {
         } catch {
           // ignore
         }
+      }
+    }
+    for (const artifact of textAudioArtifacts) {
+      try {
+        if (fs.existsSync(artifact.audioPath)) fs.unlinkSync(artifact.audioPath);
+      } catch {
+        // ignore
       }
     }
     store.reset();

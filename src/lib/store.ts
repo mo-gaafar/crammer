@@ -5,6 +5,7 @@ import {
   PodcastScript,
   ProcessingStatus,
   StudyMaterial,
+  TextAudioArtifact,
 } from "@/types";
 
 interface StoreData {
@@ -13,6 +14,7 @@ interface StoreData {
   lectures: Map<string, Lecture>;
   podcastScripts: Map<string, PodcastScript>;
   studyMaterials: Map<string, StudyMaterial>;
+  textAudioArtifacts: Map<string, TextAudioArtifact>;
   status: ProcessingStatus;
 }
 
@@ -23,6 +25,7 @@ function createStore(): StoreData {
     lectures: new Map(),
     podcastScripts: new Map(),
     studyMaterials: new Map(),
+    textAudioArtifacts: new Map(),
     status: {
       totalFiles: 0,
       transcribedFiles: 0,
@@ -121,6 +124,19 @@ export const store = {
     return Array.from(getStore().studyMaterials.values())
       .filter((m) => m.lectureId === lectureId)
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  },
+
+  // Text-to-audio artifacts
+  addTextAudioArtifact(artifact: TextAudioArtifact): void {
+    getStore().textAudioArtifacts.set(artifact.id, artifact);
+  },
+  getTextAudioArtifact(id: string): TextAudioArtifact | undefined {
+    return getStore().textAudioArtifacts.get(id);
+  },
+  getAllTextAudioArtifacts(): TextAudioArtifact[] {
+    return Array.from(getStore().textAudioArtifacts.values()).sort((a, b) =>
+      b.createdAt.localeCompare(a.createdAt)
+    );
   },
 
   // Status

@@ -6,6 +6,7 @@ export { GEMINI_MODELS, DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
 import { DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
 
 const GEMINI_TIMEOUT_MS = 600_000; // 10 min — large audio files need time
+const GEMINI_TTS_MODEL = "gemini-2.5-flash-preview-tts";
 
 const getClient = () => {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -280,4 +281,118 @@ Then include the complete Markdown study material.`;
     .trim();
 
   return { title, description, contentMarkdown };
+}
+
+export async function generateReadableScriptFromText(
+  sourceName: string,
+  text: string,
+  model: string = DEFAULT_GEMINI_MODEL
+): Promise<{ title: string; script: string }> {
+  const geminiModel = getClient().getGenerativeModel({ model });
+
+  const prompt = `You are an educational script editor.
+
+SOURCE NAME:
+${sourceName}
+
+SOURCE TEXT:
+${text.slice(0, 80_000)}
+
+Turn this source into a clear, readable audio script that can be spoken naturally.
+- Preserve the important ideas and sequence.
+- Remove formatting artifacts, repeated headers, citations clutter, and text that sounds awkward aloud.
+- Add short transitions where they improve comprehension.
+- Keep it concise, but do not omit important concepts.
+- Use a detailed Q&A learning loop by default.
+- Have HOST ask focused questions and GUIDE answer in short, complete chunks.
+- After each major answer, briefly repeat the question in simpler words and give a one-sentence recap.
+- Add gentle checkpoint lines like "Here is the part to remember" before important takeaways.
+- Keep the tone calm, direct, and low-pressure for a listener who has bad focus or feels stressed.
+
+Return:
+TITLE: <short title based on the source>
+SCRIPT:
+<complete readable script>`;
+
+  const result = await withRetry(() =>
+    geminiModel.generateContent(prompt, { timeout: GEMINI_TIMEOUT_MS })
+  );
+  const raw = result.response.text().trim();
+  const titleMatch = raw.match(/TITLE:\s*(.+)/i);
+  const script = raw
+    .replace(/TITLE:\s*.+\n?/i, "")
+    .replace(/^SCRIPT:\s*/i, "")
+    .trim();
+
+  return {
+    title: titleMatch?.[1]?.trim() || sourceName.replace(/\.[^.]+$/, "") || "Readable Script",
+    script,
+  };
+}
+
+function pcmToWav(pcm: Buffer, sampleRate = 24000, channels = 1, bitsPerSample = 16): Buffer {
+  const header = Buffer.alloc(44);
+  const byteRate = sampleRate * channels * (bitsPerSample / 8);
+  const blockAlign = channels * (bitsPerSample / 8);
+
+  header.write("RIFF", 0);
+  header.writeUInt32LE(36 + pcm.length, 4);
+  header.write("WAVE", 8);
+  header.write("fmt ", 12);
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(channels, 22);
+  header.writeUInt32LE(sampleRate, 24);
+  header.writeUInt32LE(byteRate, 28);
+  header.writeUInt16LE(blockAlign, 32);
+  header.writeUInt16LE(bitsPerSample, 34);
+  header.write("data", 36);
+  header.writeUInt32LE(pcm.length, 40);
+
+  return Buffer.concat([header, pcm]);
+}
+
+export async function synthesizeScriptAudio(script: string): Promise<Buffer> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY is not set in environment variables");
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TTS_MODEL}:generateContent?key=${apiKey}`;
+  const response = await withRetry(() =>
+    fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: `Read this script aloud in a warm, clear study-podcast voice:\n\n${script}`,
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          responseModalities: ["AUDIO"],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName: "Kore" },
+            },
+          },
+        },
+      }),
+    })
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gemini TTS failed: ${errorText.slice(0, 300)}`);
+  }
+
+  const data = await response.json();
+  const inlineData = data?.candidates?.[0]?.content?.parts?.find(
+    (part: { inlineData?: { data?: string } }) => part.inlineData?.data
+  )?.inlineData;
+  if (!inlineData?.data) throw new Error("Gemini TTS returned no audio data");
+
+  return pcmToWav(Buffer.from(inlineData.data, "base64"));
 }

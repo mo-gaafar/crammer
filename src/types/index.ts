@@ -90,6 +90,17 @@ export interface PodcastScript {
   generatedAt: string; // ISO string
 }
 
+export interface TextAudioArtifact {
+  id: string;
+  sourceName: string;
+  title: string;
+  script: string;
+  audioPath: string;
+  audioFileName: string;
+  mimeType: "audio/wav";
+  createdAt: string; // ISO string
+}
+
 export interface ProcessingStatus {
   totalFiles: number;
   transcribedFiles: number;
