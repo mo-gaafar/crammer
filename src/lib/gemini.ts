@@ -6,7 +6,8 @@ export { GEMINI_MODELS, DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
 import { DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
 
 const GEMINI_TIMEOUT_MS = 600_000; // 10 min — large audio files need time
-const TEXT_AUDIO_TIMEOUT_MS = 120_000;
+const TEXT_AUDIO_TIMEOUT_MS = 60_000;
+const TEXT_AUDIO_TTS_ATTEMPTS = 2;
 const TTS_CHUNK_MAX_CHARS = 2_800;
 const GEMINI_TTS_MODEL = "gemini-3.1-flash-tts-preview";
 
@@ -432,7 +433,7 @@ async function synthesizePcmChunk(text: string, chunkNumber: number, totalChunks
             model: GEMINI_TTS_MODEL,
           }),
         }),
-      5,
+      TEXT_AUDIO_TTS_ATTEMPTS,
       2000
     );
   } catch (err) {
@@ -454,13 +455,19 @@ async function synthesizePcmChunk(text: string, chunkNumber: number, totalChunks
   return Buffer.from(inlineData.data, "base64");
 }
 
-export async function synthesizeScriptAudio(script: string): Promise<Buffer> {
+export async function synthesizeScriptAudio(
+  script: string,
+  onProgress?: (progress: { done: number; total: number }) => void
+): Promise<Buffer> {
   const chunks = splitForTts(script);
   if (chunks.length === 0) throw new Error("Script is empty");
+
+  onProgress?.({ done: 0, total: chunks.length });
 
   const pcmChunks: Buffer[] = [];
   for (let i = 0; i < chunks.length; i++) {
     pcmChunks.push(await synthesizePcmChunk(chunks[i], i + 1, chunks.length));
+    onProgress?.({ done: i + 1, total: chunks.length });
   }
 
   return pcmToWav(Buffer.concat(pcmChunks));

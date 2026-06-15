@@ -106,6 +106,14 @@
   @apply mb-3;
 }
 
+.large-text-viewer {
+  @apply block w-full resize-y bg-slate-900/50 rounded-xl border-0 p-5 text-slate-300 text-sm leading-relaxed font-sans outline-none;
+  min-height: 18rem;
+  white-space: pre-wrap;
+  overflow-y: auto;
+  contain: layout paint style;
+}
+
 /* Landing page motion */
 .landing-wave {
   position: absolute;

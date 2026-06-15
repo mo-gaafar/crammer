@@ -21,6 +21,9 @@ interface TextAudioArtifact {
   script: string;
   audioFileName?: string;
   audioUrl?: string | null;
+  audioStatus?: "idle" | "generating" | "complete" | "error";
+  audioChunksDone?: number;
+  audioChunksTotal?: number;
   audioError?: string;
 }
 
@@ -85,6 +88,24 @@ export default function HomePage() {
   const [generatingAudioId, setGeneratingAudioId] = useState<string | null>(null);
   const [textAudioError, setTextAudioError] = useState<string | null>(null);
   const [activeToolTab, setActiveToolTab] = useState<ToolTab>("recordings");
+
+  function mergeTextAudioArtifact(updated: TextAudioArtifact) {
+    setTextAudioArtifacts((prev) =>
+      prev.map((item) => (item.id === updated.id ? { ...item, ...updated } : item))
+    );
+    setActiveTextAudio((prev) =>
+      prev?.id === updated.id ? { ...prev, ...updated } : prev
+    );
+  }
+
+  async function refreshTextAudioArtifact(id: string) {
+    const res = await fetch("/api/text-audio");
+    const data = await res.json();
+    const artifacts: TextAudioArtifact[] = data.artifacts ?? [];
+    setTextAudioArtifacts(artifacts);
+    const updated = artifacts.find((item) => item.id === id);
+    if (updated) setActiveTextAudio((prev) => (prev?.id === id ? updated : prev));
+  }
 
   // Settings
   const [sttProvider, setSttProvider] = useState<SttProvider>("deepgram");
@@ -225,23 +246,40 @@ export default function HomePage() {
   async function handleCreateAudio(artifact: TextAudioArtifact) {
     setGeneratingAudioId(artifact.id);
     setTextAudioError(null);
+    mergeTextAudioArtifact({
+      ...artifact,
+      audioStatus: "generating",
+      audioChunksDone: 0,
+      audioChunksTotal: 0,
+      audioError: undefined,
+    });
 
+    const progressTimer = window.setInterval(() => {
+      refreshTextAudioArtifact(artifact.id).catch(() => {});
+    }, 1500);
+
+    let requestFailed = false;
     try {
       const res = await fetch(`/api/text-audio/${artifact.id}`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not create audio");
 
       const updated: TextAudioArtifact = data.artifact;
-      setTextAudioArtifacts((prev) =>
-        prev.map((item) => (item.id === updated.id ? { ...item, ...updated } : item))
-      );
-      setActiveTextAudio((prev) =>
-        prev?.id === updated.id ? { ...prev, ...updated } : prev
-      );
+      mergeTextAudioArtifact(updated);
     } catch (err) {
+      requestFailed = true;
       const message = err instanceof Error ? err.message : String(err);
       setTextAudioError(`Audio failed: ${message}`);
+      mergeTextAudioArtifact({
+        ...artifact,
+        audioStatus: "error",
+        audioError: message,
+      });
     } finally {
+      window.clearInterval(progressTimer);
+      if (!requestFailed) {
+        await refreshTextAudioArtifact(artifact.id).catch(() => {});
+      }
       setGeneratingAudioId(null);
     }
   }
@@ -526,6 +564,9 @@ export default function HomePage() {
   const errorCount = files.filter((f) => f.status === "error").length;
   const allTranscribed = files.length > 0 && uploadedCount === 0 && transcribingCount === 0;
   const isWorking = phase === "uploading" || phase === "transcribing" || phase === "processing";
+  const activeAudioIsGenerating =
+    activeTextAudio?.audioStatus === "generating" &&
+    generatingAudioId === activeTextAudio.id;
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10 space-y-8">
@@ -785,13 +826,39 @@ export default function HomePage() {
               {!activeTextAudio.audioUrl && (
                 <button
                   onClick={() => handleCreateAudio(activeTextAudio)}
-                  disabled={generatingAudioId === activeTextAudio.id}
+                  disabled={activeAudioIsGenerating}
                   className="btn-secondary text-xs py-1.5 px-3 shrink-0"
                 >
-                  {generatingAudioId === activeTextAudio.id ? "Creating audio chunks..." : "Create audio"}
+                  {activeAudioIsGenerating ? "Creating audio chunks..." : "Create audio"}
                 </button>
               )}
             </div>
+            {activeAudioIsGenerating && (
+              <div className="rounded-lg border border-indigo-800 bg-indigo-950/40 p-3">
+                <div className="mb-1 flex justify-between text-xs text-indigo-200">
+                  <span>Creating audio chunks</span>
+                  <span>
+                    {activeTextAudio.audioChunksDone ?? 0}
+                    {activeTextAudio.audioChunksTotal ? `/${activeTextAudio.audioChunksTotal}` : ""}
+                  </span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-slate-800">
+                  <div
+                    className="h-1.5 rounded-full bg-indigo-500 transition-all"
+                    style={{
+                      width: activeTextAudio.audioChunksTotal
+                        ? `${((activeTextAudio.audioChunksDone ?? 0) / activeTextAudio.audioChunksTotal) * 100}%`
+                        : "8%",
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+            {!activeAudioIsGenerating && activeTextAudio.audioStatus === "error" && activeTextAudio.audioError && (
+              <div className="rounded-lg border border-red-800 bg-red-950/40 p-3 text-xs text-red-200">
+                Audio failed: {activeTextAudio.audioError}
+              </div>
+            )}
             {activeTextAudio.audioUrl ? (
               <audio controls src={activeTextAudio.audioUrl} className="w-full" />
             ) : (

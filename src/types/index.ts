@@ -99,6 +99,9 @@ export interface TextAudioArtifact {
   audioFileName?: string;
   mimeType: "audio/wav";
   createdAt: string; // ISO string
+  audioStatus?: "idle" | "generating" | "complete" | "error";
+  audioChunksDone?: number;
+  audioChunksTotal?: number;
   audioError?: string;
 }
 

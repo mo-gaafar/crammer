@@ -4,6 +4,23 @@ import { generateReadableScriptFromText } from "@/lib/gemini";
 import { store } from "@/lib/store";
 import { TextAudioArtifact } from "@/types";
 
+function serializeTextAudioArtifact(artifact: TextAudioArtifact) {
+  return {
+    id: artifact.id,
+    sourceName: artifact.sourceName,
+    title: artifact.title,
+    script: artifact.script,
+    audioFileName: artifact.audioFileName,
+    mimeType: artifact.mimeType,
+    createdAt: artifact.createdAt,
+    audioStatus: artifact.audioStatus,
+    audioChunksDone: artifact.audioChunksDone,
+    audioChunksTotal: artifact.audioChunksTotal,
+    audioUrl: artifact.audioPath ? `/api/text-audio/${artifact.id}` : null,
+    audioError: artifact.audioError,
+  };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -50,16 +67,7 @@ export async function POST(request: NextRequest) {
     store.addTextAudioArtifact(artifact);
 
     return NextResponse.json({
-      artifact: {
-        id: artifact.id,
-        sourceName: artifact.sourceName,
-        title: artifact.title,
-        script: artifact.script,
-        audioFileName: artifact.audioFileName,
-        mimeType: artifact.mimeType,
-        createdAt: artifact.createdAt,
-        audioUrl: artifact.audioPath ? `/api/text-audio/${artifact.id}` : null,
-      },
+      artifact: serializeTextAudioArtifact(artifact),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -68,17 +76,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  const artifacts = store.getAllTextAudioArtifacts().map((artifact) => ({
-    id: artifact.id,
-    sourceName: artifact.sourceName,
-    title: artifact.title,
-    script: artifact.script,
-    audioFileName: artifact.audioFileName,
-    mimeType: artifact.mimeType,
-    createdAt: artifact.createdAt,
-    audioUrl: artifact.audioPath ? `/api/text-audio/${artifact.id}` : null,
-    audioError: artifact.audioError,
-  }));
+  const artifacts = store.getAllTextAudioArtifacts().map(serializeTextAudioArtifact);
 
   return NextResponse.json({ artifacts });
 }

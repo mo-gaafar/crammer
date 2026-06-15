@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   AudioFile,
@@ -53,6 +53,31 @@ const FORMAT_OPTIONS: { value: PodcastFormat; label: string; icon: string; desc:
 
 type Tab = "transcript" | "podcast" | "materials";
 
+function countWords(text: string): number {
+  const trimmed = text.trim();
+  return trimmed ? trimmed.split(/\s+/).length : 0;
+}
+
+const LargeTextViewer = memo(function LargeTextViewer({
+  text,
+  className = "",
+  maxHeightClass = "max-h-[600px]",
+}: {
+  text: string;
+  className?: string;
+  maxHeightClass?: string;
+}) {
+  return (
+    <textarea
+      readOnly
+      value={text}
+      spellCheck={false}
+      className={`large-text-viewer ${maxHeightClass} ${className}`}
+      aria-label="Generated text"
+    />
+  );
+});
+
 interface LectureDetail {
   lecture: Lecture;
   audioFiles: AudioFile[];
@@ -84,6 +109,19 @@ export default function LectureDetailPage() {
   const [generatingMaterial, setGeneratingMaterial] = useState(false);
   const [materialError, setMaterialError] = useState<string | null>(null);
   const [materialCopied, setMaterialCopied] = useState(false);
+
+  const transcriptWordCount = useMemo(
+    () => (data ? countWords(data.lecture.fullTranscript).toLocaleString() : "0"),
+    [data]
+  );
+  const activeMaterialWordCount = useMemo(
+    () => (activeMaterial ? countWords(activeMaterial.contentMarkdown).toLocaleString() : "0"),
+    [activeMaterial]
+  );
+  const activeScriptWordCount = useMemo(
+    () => (activeScript ? countWords(activeScript.script).toLocaleString() : "0"),
+    [activeScript]
+  );
 
   useEffect(() => {
     if (!id) return;
@@ -349,7 +387,7 @@ export default function LectureDetailPage() {
               <h2 className="section-title">Full Transcript</h2>
               <div className="flex items-center gap-3">
                 <span className="text-xs text-slate-500">
-                  {lecture.fullTranscript.split(" ").length.toLocaleString()} words
+                  {transcriptWordCount} words
                 </span>
                 <button
                   onClick={handleCopyTranscript}
@@ -359,11 +397,7 @@ export default function LectureDetailPage() {
                 </button>
               </div>
             </div>
-            <div className="bg-slate-900/50 rounded-xl p-5 max-h-[500px] overflow-y-auto">
-              <pre className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap font-sans">
-                {lecture.fullTranscript}
-              </pre>
-            </div>
+            <LargeTextViewer text={lecture.fullTranscript} maxHeightClass="max-h-[500px]" />
           </div>
         )}
 
@@ -471,7 +505,7 @@ export default function LectureDetailPage() {
                         {activeMaterial.type.replace(/_/g, " ")}
                       </span>
                       <span className="text-xs text-slate-500">
-                        {activeMaterial.contentMarkdown.split(" ").length.toLocaleString()} words
+                        {activeMaterialWordCount} words
                       </span>
                     </div>
                   </div>
@@ -491,11 +525,7 @@ export default function LectureDetailPage() {
                   </div>
                 </div>
 
-                <div className="bg-slate-900/50 rounded-xl p-5 max-h-[600px] overflow-y-auto">
-                  <pre className="podcast-script whitespace-pre-wrap font-sans text-sm leading-relaxed">
-                    {activeMaterial.contentMarkdown}
-                  </pre>
-                </div>
+                <LargeTextViewer text={activeMaterial.contentMarkdown} />
               </div>
             )}
 
@@ -611,7 +641,7 @@ export default function LectureDetailPage() {
                         {FORMAT_OPTIONS.find((o) => o.value === activeScript.format)?.label}
                       </span>
                       <span className="text-xs text-slate-500">
-                        {activeScript.script.split(" ").length.toLocaleString()} words
+                        {activeScriptWordCount} words
                       </span>
                     </div>
                   </div>
@@ -625,11 +655,7 @@ export default function LectureDetailPage() {
                   </div>
                 </div>
 
-                <div className="bg-slate-900/50 rounded-xl p-5 max-h-[600px] overflow-y-auto">
-                  <pre className="podcast-script whitespace-pre-wrap font-sans text-sm leading-relaxed">
-                    {activeScript.script}
-                  </pre>
-                </div>
+                <LargeTextViewer text={activeScript.script} />
               </div>
             )}
 
