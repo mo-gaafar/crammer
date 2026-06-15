@@ -21,7 +21,7 @@ interface TextAudioArtifact {
   script: string;
   audioFileName?: string;
   audioUrl?: string | null;
-  audioStatus?: "idle" | "generating" | "complete" | "error";
+  audioStatus?: "idle" | "queued" | "generating" | "complete" | "error";
   audioChunksDone?: number;
   audioChunksTotal?: number;
   audioError?: string;
@@ -29,6 +29,7 @@ interface TextAudioArtifact {
 
 type Phase = "idle" | "uploading" | "transcribing" | "processing" | "complete" | "error";
 type SttProvider = "deepgram" | "gemini";
+type TtsProvider = "gemini" | "deepgram";
 type ToolTab = "recordings" | "textAudio" | "drive";
 
 function formatBytes(bytes: number): string {
@@ -86,6 +87,7 @@ export default function HomePage() {
   const [generatingTextAudio, setGeneratingTextAudio] = useState(false);
   const [savingDirectScript, setSavingDirectScript] = useState(false);
   const [generatingAudioId, setGeneratingAudioId] = useState<string | null>(null);
+  const [queueingAllAudio, setQueueingAllAudio] = useState(false);
   const [textAudioError, setTextAudioError] = useState<string | null>(null);
   const [activeToolTab, setActiveToolTab] = useState<ToolTab>("recordings");
 
@@ -110,13 +112,16 @@ export default function HomePage() {
 
   // Settings
   const [sttProvider, setSttProvider] = useState<SttProvider>("deepgram");
+  const [ttsProvider, setTtsProvider] = useState<TtsProvider>("gemini");
   const [geminiModel, setGeminiModel] = useState(DEFAULT_GEMINI_MODEL);
 
   // Restore settings and hydrate file state from server on mount
   useEffect(() => {
     const savedProvider = localStorage.getItem("sttProvider") as SttProvider | null;
+    const savedTtsProvider = localStorage.getItem("ttsProvider") as TtsProvider | null;
     const savedModel = localStorage.getItem("geminiModel");
     if (savedProvider) setSttProvider(savedProvider);
+    if (savedTtsProvider) setTtsProvider(savedTtsProvider);
     if (savedModel) setGeminiModel(savedModel);
 
     // Sync any server-side file state (survives tab close / server restart)
@@ -155,9 +160,36 @@ export default function HomePage() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    const hasActiveAudioJobs = textAudioArtifacts.some(
+      (artifact) => artifact.audioStatus === "queued" || artifact.audioStatus === "generating"
+    );
+    if (!hasActiveAudioJobs) return;
+
+    const timer = window.setInterval(() => {
+      fetch("/api/text-audio")
+        .then((r) => r.json())
+        .then((data) => {
+          const artifacts: TextAudioArtifact[] = data.artifacts ?? [];
+          setTextAudioArtifacts(artifacts);
+          setActiveTextAudio((prev) =>
+            prev ? artifacts.find((artifact) => artifact.id === prev.id) ?? prev : artifacts[0] ?? null
+          );
+        })
+        .catch(() => {});
+    }, 1500);
+
+    return () => window.clearInterval(timer);
+  }, [textAudioArtifacts]);
+
   function saveSttProvider(p: SttProvider) {
     setSttProvider(p);
     localStorage.setItem("sttProvider", p);
+  }
+
+  function saveTtsProvider(p: TtsProvider) {
+    setTtsProvider(p);
+    localStorage.setItem("ttsProvider", p);
   }
 
   function saveGeminiModel(m: string) {
@@ -215,6 +247,7 @@ export default function HomePage() {
           text: pastedText,
           geminiModel,
           useTextAsScript,
+          ttsProvider,
         }),
       });
       const data = await res.json();
@@ -249,9 +282,8 @@ export default function HomePage() {
     setTextAudioError(null);
     mergeTextAudioArtifact({
       ...artifact,
-      audioStatus: "generating",
+      audioStatus: "queued",
       audioChunksDone: 0,
-      audioChunksTotal: 0,
       audioError: undefined,
     });
 
@@ -262,16 +294,6 @@ export default function HomePage() {
 
       const updated: TextAudioArtifact = data.artifact;
       mergeTextAudioArtifact(updated);
-
-      let latest = updated;
-      while (latest.audioStatus === "generating") {
-        await new Promise((resolve) => window.setTimeout(resolve, 1500));
-        latest = (await refreshTextAudioArtifact(artifact.id)) ?? latest;
-      }
-
-      if (latest.audioStatus === "error") {
-        throw new Error(latest.audioError ?? "Audio generation failed");
-      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setTextAudioError(`Audio failed: ${message}`);
@@ -283,6 +305,39 @@ export default function HomePage() {
     } finally {
       await refreshTextAudioArtifact(artifact.id).catch(() => {});
       setGeneratingAudioId(null);
+    }
+  }
+
+  async function handleQueueAllAudio() {
+    const toQueue = textAudioArtifacts.filter(
+      (artifact) =>
+        !artifact.audioUrl &&
+        artifact.audioStatus !== "queued" &&
+        artifact.audioStatus !== "generating"
+    );
+    if (toQueue.length === 0) return;
+
+    setQueueingAllAudio(true);
+    setTextAudioError(null);
+    try {
+      for (const artifact of toQueue) {
+        mergeTextAudioArtifact({
+          ...artifact,
+          audioStatus: "queued",
+          audioChunksDone: 0,
+          audioError: undefined,
+        });
+        const res = await fetch(`/api/text-audio/${artifact.id}`, { method: "POST" });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? `Could not queue ${artifact.sourceName}`);
+        if (data.artifact) mergeTextAudioArtifact(data.artifact);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setTextAudioError(`Batch queue failed: ${message}`);
+    } finally {
+      await refreshTextAudioArtifact(activeTextAudio?.id ?? toQueue[0].id).catch(() => {});
+      setQueueingAllAudio(false);
     }
   }
 
@@ -567,8 +622,13 @@ export default function HomePage() {
   const allTranscribed = files.length > 0 && uploadedCount === 0 && transcribingCount === 0;
   const isWorking = phase === "uploading" || phase === "transcribing" || phase === "processing";
   const activeAudioIsGenerating =
-    activeTextAudio?.audioStatus === "generating" &&
-    generatingAudioId === activeTextAudio.id;
+    activeTextAudio?.audioStatus === "queued" || activeTextAudio?.audioStatus === "generating";
+  const queueableTextAudioCount = textAudioArtifacts.filter(
+    (artifact) =>
+      !artifact.audioUrl &&
+      artifact.audioStatus !== "queued" &&
+      artifact.audioStatus !== "generating"
+  ).length;
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10 space-y-8">
@@ -625,6 +685,26 @@ export default function HomePage() {
                   }`}
                 >
                   {p === "deepgram" ? "Deepgram Nova-2" : "Gemini STT"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* TTS Provider */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-slate-400">Audio Synthesis Provider</label>
+            <div className="flex gap-2">
+              {(["gemini", "deepgram"] as TtsProvider[]).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => saveTtsProvider(p)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                    ttsProvider === p
+                      ? "bg-indigo-600 border-indigo-500 text-white"
+                      : "bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500"
+                  }`}
+                >
+                  {p === "deepgram" ? "Deepgram Aura" : "Gemini TTS"}
                 </button>
               ))}
             </div>
@@ -738,7 +818,7 @@ export default function HomePage() {
           </div>
           <button
             onClick={() => textFileInputRef.current?.click()}
-            disabled={generatingTextAudio || savingDirectScript || generatingAudioId !== null || isWorking}
+            disabled={generatingTextAudio || savingDirectScript || queueingAllAudio || generatingAudioId !== null || isWorking}
             className="btn-secondary text-xs py-1.5 px-3 shrink-0"
           >
             Load document
@@ -804,6 +884,17 @@ export default function HomePage() {
           <span className="text-xs text-slate-500">
             Use Text as Script skips Gemini rewriting and sends the pasted script to TTS.
           </span>
+          {textAudioArtifacts.length > 0 && (
+            <button
+              onClick={handleQueueAllAudio}
+              disabled={queueableTextAudioCount === 0 || queueingAllAudio}
+              className="btn-secondary flex items-center gap-2"
+            >
+              {queueingAllAudio
+                ? "Queueing audio..."
+                : `Queue ${queueableTextAudioCount} Audio Job${queueableTextAudioCount !== 1 ? "s" : ""}`}
+            </button>
+          )}
         </div>
 
         {activeTextAudio && (
@@ -831,14 +922,22 @@ export default function HomePage() {
                   disabled={activeAudioIsGenerating}
                   className="btn-secondary text-xs py-1.5 px-3 shrink-0"
                 >
-                  {activeAudioIsGenerating ? "Creating audio chunks..." : "Create audio"}
+                  {activeTextAudio.audioStatus === "queued"
+                    ? "Queued for audio..."
+                    : activeTextAudio.audioStatus === "generating"
+                      ? "Creating audio chunks..."
+                      : "Create audio"}
                 </button>
               )}
             </div>
             {activeAudioIsGenerating && (
               <div className="rounded-lg border border-indigo-800 bg-indigo-950/40 p-3">
                 <div className="mb-1 flex justify-between text-xs text-indigo-200">
-                  <span>Creating audio chunks</span>
+                  <span>
+                    {activeTextAudio.audioStatus === "queued"
+                      ? "Waiting in TTS queue"
+                      : "Creating audio chunks"}
+                  </span>
                   <span>
                     {activeTextAudio.audioChunksDone ?? 0}
                     {activeTextAudio.audioChunksTotal ? `/${activeTextAudio.audioChunksTotal}` : ""}
@@ -888,6 +987,10 @@ export default function HomePage() {
                 }`}
               >
                 {artifact.sourceName}
+                {artifact.audioStatus === "queued" && " · queued"}
+                {artifact.audioStatus === "generating" && " · running"}
+                {artifact.audioStatus === "complete" && " · done"}
+                {artifact.audioStatus === "error" && " · failed"}
               </button>
             ))}
           </div>

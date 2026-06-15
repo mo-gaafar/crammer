@@ -2,13 +2,13 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { GoogleAIFileManager } from "@google/generative-ai/server";
 import { AudioFile, Lecture, PodcastFormat, StudyTemplate, Transcription } from "@/types";
 import { withRetry } from "@/lib/retry";
+import { pcmToWav, splitForTts, countScriptAudioChunks } from "@/lib/tts-utils";
 export { GEMINI_MODELS, DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
 import { DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
 
 const GEMINI_TIMEOUT_MS = 600_000; // 10 min — large audio files need time
 const TEXT_AUDIO_TIMEOUT_MS = 120_000;
 const TEXT_AUDIO_TTS_ATTEMPTS = 3;
-const TTS_CHUNK_MAX_CHARS = 1_200;
 const GEMINI_TTS_MODEL = "gemini-2.5-flash-preview-tts";
 
 const getClient = () => {
@@ -335,73 +335,7 @@ SCRIPT:
   };
 }
 
-function pcmToWav(pcm: Buffer, sampleRate = 24000, channels = 1, bitsPerSample = 16): Buffer {
-  const header = Buffer.alloc(44);
-  const byteRate = sampleRate * channels * (bitsPerSample / 8);
-  const blockAlign = channels * (bitsPerSample / 8);
-
-  header.write("RIFF", 0);
-  header.writeUInt32LE(36 + pcm.length, 4);
-  header.write("WAVE", 8);
-  header.write("fmt ", 12);
-  header.writeUInt32LE(16, 16);
-  header.writeUInt16LE(1, 20);
-  header.writeUInt16LE(channels, 22);
-  header.writeUInt32LE(sampleRate, 24);
-  header.writeUInt32LE(byteRate, 28);
-  header.writeUInt16LE(blockAlign, 32);
-  header.writeUInt16LE(bitsPerSample, 34);
-  header.write("data", 36);
-  header.writeUInt32LE(pcm.length, 40);
-
-  return Buffer.concat([header, pcm]);
-}
-
-function splitForTts(script: string): string[] {
-  const blocks = script
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter(Boolean);
-  const chunks: string[] = [];
-  let current = "";
-
-  for (const block of blocks) {
-    if (block.length > TTS_CHUNK_MAX_CHARS) {
-      if (current) {
-        chunks.push(current);
-        current = "";
-      }
-      const sentences = block.match(/[^.!?]+[.!?]+|\S.+$/g) ?? [block];
-      let sentenceChunk = "";
-      for (const sentence of sentences) {
-        const next = sentenceChunk ? `${sentenceChunk} ${sentence.trim()}` : sentence.trim();
-        if (next.length > TTS_CHUNK_MAX_CHARS && sentenceChunk) {
-          chunks.push(sentenceChunk);
-          sentenceChunk = sentence.trim();
-        } else {
-          sentenceChunk = next;
-        }
-      }
-      if (sentenceChunk) chunks.push(sentenceChunk);
-      continue;
-    }
-
-    const next = current ? `${current}\n\n${block}` : block;
-    if (next.length > TTS_CHUNK_MAX_CHARS && current) {
-      chunks.push(current);
-      current = block;
-    } else {
-      current = next;
-    }
-  }
-
-  if (current) chunks.push(current);
-  return chunks;
-}
-
-export function countScriptAudioChunks(script: string): number {
-  return splitForTts(script).length;
-}
+export { countScriptAudioChunks } from "@/lib/tts-utils";
 
 async function synthesizePcmChunk(text: string, chunkNumber: number, totalChunks: number): Promise<Buffer> {
   const apiKey = process.env.GEMINI_API_KEY;

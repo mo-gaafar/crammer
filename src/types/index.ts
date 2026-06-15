@@ -87,7 +87,21 @@ export interface PodcastScript {
   title: string;
   description: string;
   script: string;
+  ttsCostEstimate?: TtsCostEstimate;
   generatedAt: string; // ISO string
+}
+
+export type TtsProvider = "gemini" | "deepgram";
+
+export interface TtsCostEstimate {
+  characterCount: number;
+  wordCount: number;
+  estimatedAudioMinutes: number;
+  providers: Record<TtsProvider, {
+    model: string;
+    estimatedUsd: number;
+    billingBasis: string;
+  }>;
 }
 
 export interface TextAudioArtifact {
@@ -95,11 +109,12 @@ export interface TextAudioArtifact {
   sourceName: string;
   title: string;
   script: string;
+  ttsProvider?: TtsProvider;
   audioPath?: string;
   audioFileName?: string;
   mimeType: "audio/wav";
   createdAt: string; // ISO string
-  audioStatus?: "idle" | "generating" | "complete" | "error";
+  audioStatus?: "idle" | "queued" | "generating" | "complete" | "error";
   audioChunksDone?: number;
   audioChunksTotal?: number;
   audioError?: string;

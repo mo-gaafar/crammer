@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { store } from "@/lib/store";
 import { generatePodcastScript } from "@/lib/gemini";
+import { estimateTtsCost } from "@/lib/tts-cost";
 import { PodcastFormat, PodcastScript } from "@/types";
 
 /**
@@ -51,6 +52,7 @@ export async function POST(request: NextRequest) {
       title: result.title,
       description: result.description,
       script: result.script,
+      ttsCostEstimate: estimateTtsCost(result.script),
       generatedAt: new Date().toISOString(),
     };
 

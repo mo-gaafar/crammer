@@ -2,6 +2,7 @@
 
 import { memo, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { estimateTtsCost, formatUsd } from "@/lib/tts-cost";
 import {
   AudioFile,
   Lecture,
@@ -54,8 +55,7 @@ const FORMAT_OPTIONS: { value: PodcastFormat; label: string; icon: string; desc:
 type Tab = "transcript" | "podcast" | "materials";
 
 function countWords(text: string): number {
-  const trimmed = text.trim();
-  return trimmed ? trimmed.split(/\s+/).length : 0;
+  return estimateTtsCost(text).wordCount;
 }
 
 const LargeTextViewer = memo(function LargeTextViewer({
@@ -120,6 +120,12 @@ export default function LectureDetailPage() {
   );
   const activeScriptWordCount = useMemo(
     () => (activeScript ? countWords(activeScript.script).toLocaleString() : "0"),
+    [activeScript]
+  );
+  const activeScriptTtsCost = useMemo(
+    () =>
+      activeScript?.ttsCostEstimate ??
+      (activeScript ? estimateTtsCost(activeScript.script) : null),
     [activeScript]
   );
 
@@ -643,7 +649,32 @@ export default function LectureDetailPage() {
                       <span className="text-xs text-slate-500">
                         {activeScriptWordCount} words
                       </span>
+                      {activeScriptTtsCost && (
+                        <span className="text-xs text-slate-500">
+                          ~{activeScriptTtsCost.estimatedAudioMinutes.toFixed(1)} min audio
+                        </span>
+                      )}
                     </div>
+                    {activeScriptTtsCost && (
+                      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        {(["gemini", "deepgram"] as const).map((provider) => {
+                          const estimate = activeScriptTtsCost.providers[provider];
+                          return (
+                            <div
+                              key={provider}
+                              className="rounded-lg border border-slate-700 bg-slate-900/50 px-3 py-2"
+                              title={estimate.billingBasis}
+                            >
+                              <div className="text-slate-400 capitalize">{provider} TTS</div>
+                              <div className="text-slate-200 font-semibold">
+                                {formatUsd(estimate.estimatedUsd)}
+                              </div>
+                              <div className="text-slate-500">{estimate.model}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                   <div className="flex gap-2 shrink-0">
                     <button onClick={handleCopy} className="btn-secondary text-xs py-1.5 px-3">

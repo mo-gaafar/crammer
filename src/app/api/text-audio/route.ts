@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { generateReadableScriptFromText } from "@/lib/gemini";
 import { store } from "@/lib/store";
-import { TextAudioArtifact } from "@/types";
+import { TextAudioArtifact, TtsProvider } from "@/types";
 
 function serializeTextAudioArtifact(artifact: TextAudioArtifact) {
   return {
@@ -10,6 +10,7 @@ function serializeTextAudioArtifact(artifact: TextAudioArtifact) {
     sourceName: artifact.sourceName,
     title: artifact.title,
     script: artifact.script,
+    ttsProvider: artifact.ttsProvider ?? "gemini",
     audioFileName: artifact.audioFileName,
     mimeType: artifact.mimeType,
     createdAt: artifact.createdAt,
@@ -24,11 +25,12 @@ function serializeTextAudioArtifact(artifact: TextAudioArtifact) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { sourceName, text, geminiModel, useTextAsScript } = body as {
+    const { sourceName, text, geminiModel, useTextAsScript, ttsProvider } = body as {
       sourceName?: string;
       text?: string;
       geminiModel?: string;
       useTextAsScript?: boolean;
+      ttsProvider?: TtsProvider;
     };
 
     const trimmedText = text?.trim();
@@ -60,6 +62,7 @@ export async function POST(request: NextRequest) {
       sourceName: cleanSourceName,
       title: generated.title,
       script: generated.script,
+      ttsProvider: ttsProvider === "deepgram" ? "deepgram" : "gemini",
       mimeType: "audio/wav",
       createdAt: new Date().toISOString(),
     };

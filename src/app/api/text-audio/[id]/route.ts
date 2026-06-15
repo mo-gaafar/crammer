@@ -3,10 +3,27 @@ import fs from "fs";
 import path from "path";
 import { store } from "@/lib/store";
 import { ensureUploadDir, getUploadDir } from "@/lib/metadata";
-import { countScriptAudioChunks, synthesizeScriptAudio } from "@/lib/gemini";
+import { synthesizeScriptAudio } from "@/lib/gemini";
+import { synthesizeWithDeepgram } from "@/lib/deepgram";
+import { countScriptAudioChunks } from "@/lib/tts-utils";
 import { TextAudioArtifact } from "@/types";
 
-const activeAudioJobs = new Set<string>();
+interface TextAudioQueue {
+  ids: string[];
+  processing: boolean;
+}
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __crammerTextAudioQueue: TextAudioQueue | undefined;
+}
+
+function getAudioQueue(): TextAudioQueue {
+  if (!global.__crammerTextAudioQueue) {
+    global.__crammerTextAudioQueue = { ids: [], processing: false };
+  }
+  return global.__crammerTextAudioQueue;
+}
 
 function safeFileStem(name: string): string {
   const stem = path.basename(name, path.extname(name)).trim() || "pasted-text";
@@ -23,6 +40,7 @@ function serializeTextAudioArtifact(artifact: TextAudioArtifact) {
     sourceName: artifact.sourceName,
     title: artifact.title,
     script: artifact.script,
+    ttsProvider: artifact.ttsProvider ?? "gemini",
     audioFileName: artifact.audioFileName,
     mimeType: artifact.mimeType,
     createdAt: artifact.createdAt,
@@ -34,12 +52,13 @@ function serializeTextAudioArtifact(artifact: TextAudioArtifact) {
   };
 }
 
-async function createAudioInBackground(artifactId: string): Promise<void> {
+async function runAudioJob(artifactId: string): Promise<void> {
   const artifact = store.getTextAudioArtifact(artifactId);
   if (!artifact) return;
 
   try {
-    const audio = await synthesizeScriptAudio(artifact.script, ({ done, total }) => {
+    const synthesize = artifact.ttsProvider === "deepgram" ? synthesizeWithDeepgram : synthesizeScriptAudio;
+    const audio = await synthesize(artifact.script, ({ done, total }) => {
       store.updateTextAudioArtifact(artifact.id, {
         audioStatus: "generating",
         audioChunksDone: done,
@@ -62,9 +81,42 @@ async function createAudioInBackground(artifactId: string): Promise<void> {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     store.updateTextAudioArtifact(artifactId, { audioStatus: "error", audioError: message });
-  } finally {
-    activeAudioJobs.delete(artifactId);
   }
+}
+
+async function processAudioQueue(): Promise<void> {
+  const queue = getAudioQueue();
+  if (queue.processing) return;
+
+  queue.processing = true;
+  try {
+    while (queue.ids.length > 0) {
+      const artifactId = queue.ids.shift();
+      if (!artifactId) continue;
+
+      const artifact = store.getTextAudioArtifact(artifactId);
+      if (!artifact || artifact.audioPath || artifact.audioStatus === "complete") continue;
+
+      store.updateTextAudioArtifact(artifactId, {
+        audioStatus: "generating",
+        audioChunksDone: 0,
+        audioChunksTotal: artifact.audioChunksTotal ?? countScriptAudioChunks(artifact.script),
+        audioError: undefined,
+      });
+
+      await runAudioJob(artifactId);
+    }
+  } finally {
+    queue.processing = false;
+  }
+}
+
+function enqueueAudioJob(artifactId: string): void {
+  const queue = getAudioQueue();
+  if (!queue.ids.includes(artifactId)) {
+    queue.ids.push(artifactId);
+  }
+  void processAudioQueue();
 }
 
 export async function GET(
@@ -102,7 +154,7 @@ export async function POST(
       return NextResponse.json({ artifact: serializeTextAudioArtifact(artifact) });
     }
 
-    if (artifact.audioStatus === "generating" && activeAudioJobs.has(artifact.id)) {
+    if (artifact.audioStatus === "queued" || artifact.audioStatus === "generating") {
       return NextResponse.json({ artifact: serializeTextAudioArtifact(artifact) }, { status: 202 });
     }
 
@@ -112,14 +164,13 @@ export async function POST(
     }
 
     store.updateTextAudioArtifact(artifact.id, {
-      audioStatus: "generating",
+      audioStatus: "queued",
       audioChunksDone: 0,
       audioChunksTotal: total,
       audioError: undefined,
     });
 
-    activeAudioJobs.add(artifact.id);
-    void createAudioInBackground(artifact.id);
+    enqueueAudioJob(artifact.id);
 
     const updated = store.getTextAudioArtifact(artifact.id);
     return NextResponse.json({

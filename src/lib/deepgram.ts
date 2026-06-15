@@ -1,6 +1,14 @@
 import { createClient } from "@deepgram/sdk";
 import fs from "fs";
 import { Transcription } from "@/types";
+import { withRetry } from "@/lib/retry";
+import { splitForTts, pcmToWav, countScriptAudioChunks } from "@/lib/tts-utils";
+
+export { countScriptAudioChunks };
+
+const DEEPGRAM_TTS_MODEL = "aura-asteria-en";
+const DEEPGRAM_TTS_TIMEOUT_MS = 120_000;
+const DEEPGRAM_TTS_ATTEMPTS = 3;
 
 export async function transcribeAudioFile(
   filePath: string,
@@ -69,4 +77,53 @@ export async function transcribeAudioFile(
     duration,
     paragraphs: paragraphs.length > 0 ? paragraphs : undefined,
   };
+}
+
+async function synthesizeDeepgramChunk(text: string): Promise<Buffer> {
+  const apiKey = process.env.DEEPGRAM_API_KEY;
+  if (!apiKey) throw new Error("DEEPGRAM_API_KEY is not set in environment variables");
+
+  const url = `https://api.deepgram.com/v1/speak?model=${DEEPGRAM_TTS_MODEL}&encoding=linear16&sample_rate=24000`;
+
+  const response = await withRetry(
+    async () => {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Token ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        signal: AbortSignal.timeout(DEEPGRAM_TTS_TIMEOUT_MS),
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`${res.status}: ${errorText.slice(0, 300)}`);
+      }
+      return res;
+    },
+    DEEPGRAM_TTS_ATTEMPTS,
+    2000
+  );
+
+  const arrayBuffer = await response.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}
+
+export async function synthesizeWithDeepgram(
+  script: string,
+  onProgress?: (progress: { done: number; total: number }) => void
+): Promise<Buffer> {
+  const chunks = splitForTts(script);
+  if (chunks.length === 0) throw new Error("Script is empty");
+
+  onProgress?.({ done: 0, total: chunks.length });
+
+  const pcmChunks: Buffer[] = [];
+  for (let i = 0; i < chunks.length; i++) {
+    pcmChunks.push(await synthesizeDeepgramChunk(chunks[i]));
+    onProgress?.({ done: i + 1, total: chunks.length });
+  }
+
+  return pcmToWav(Buffer.concat(pcmChunks));
 }
