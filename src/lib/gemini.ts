@@ -6,10 +6,10 @@ export { GEMINI_MODELS, DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
 import { DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
 
 const GEMINI_TIMEOUT_MS = 600_000; // 10 min — large audio files need time
-const TEXT_AUDIO_TIMEOUT_MS = 60_000;
+const TEXT_AUDIO_TIMEOUT_MS = 120_000;
 const TEXT_AUDIO_TTS_ATTEMPTS = 2;
-const TTS_CHUNK_MAX_CHARS = 2_800;
-const GEMINI_TTS_MODEL = "gemini-3.1-flash-tts-preview";
+const TTS_CHUNK_MAX_CHARS = 1_200;
+const GEMINI_TTS_MODEL = "gemini-2.5-flash-preview-tts";
 
 const getClient = () => {
   const apiKey = process.env.GEMINI_API_KEY;
