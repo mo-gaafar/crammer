@@ -6,6 +6,7 @@ import { ensureUploadDir, getUploadDir } from "@/lib/metadata";
 import { synthesizeScriptAudio } from "@/lib/gemini";
 import { synthesizeWithDeepgram } from "@/lib/deepgram";
 import { countScriptAudioChunks } from "@/lib/tts-utils";
+import { estimateTtsCost } from "@/lib/tts-cost";
 import { TextAudioArtifact } from "@/types";
 
 interface TextAudioQueue {
@@ -41,6 +42,7 @@ function serializeTextAudioArtifact(artifact: TextAudioArtifact) {
     title: artifact.title,
     script: artifact.script,
     ttsProvider: artifact.ttsProvider ?? "gemini",
+    ttsCostEstimate: artifact.ttsCostEstimate ?? estimateTtsCost(artifact.script),
     audioFileName: artifact.audioFileName,
     mimeType: artifact.mimeType,
     createdAt: artifact.createdAt,

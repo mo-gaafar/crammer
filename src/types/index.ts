@@ -110,6 +110,7 @@ export interface TextAudioArtifact {
   title: string;
   script: string;
   ttsProvider?: TtsProvider;
+  ttsCostEstimate?: TtsCostEstimate;
   audioPath?: string;
   audioFileName?: string;
   mimeType: "audio/wav";

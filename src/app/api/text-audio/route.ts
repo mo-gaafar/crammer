@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { generateReadableScriptFromText } from "@/lib/gemini";
 import { store } from "@/lib/store";
+import { estimateTtsCost } from "@/lib/tts-cost";
 import { TextAudioArtifact, TtsProvider } from "@/types";
 
 function serializeTextAudioArtifact(artifact: TextAudioArtifact) {
@@ -11,6 +12,7 @@ function serializeTextAudioArtifact(artifact: TextAudioArtifact) {
     title: artifact.title,
     script: artifact.script,
     ttsProvider: artifact.ttsProvider ?? "gemini",
+    ttsCostEstimate: artifact.ttsCostEstimate ?? estimateTtsCost(artifact.script),
     audioFileName: artifact.audioFileName,
     mimeType: artifact.mimeType,
     createdAt: artifact.createdAt,
@@ -63,6 +65,7 @@ export async function POST(request: NextRequest) {
       title: generated.title,
       script: generated.script,
       ttsProvider: ttsProvider === "deepgram" ? "deepgram" : "gemini",
+      ttsCostEstimate: estimateTtsCost(generated.script),
       mimeType: "audio/wav",
       createdAt: new Date().toISOString(),
     };

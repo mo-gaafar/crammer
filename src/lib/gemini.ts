@@ -209,7 +209,14 @@ ${formatInstructions[format]}
 Write a complete, ready-to-record podcast script based on this lecture content.
 The script should be engaging, educational, and approximately 10-20 minutes of audio when read aloud.
 
-Return the script with clear speaker labels and stage directions where helpful.
+CRITICAL FORMATTING RULES — the script will be fed directly to a text-to-speech engine:
+- Use PLAIN TEXT ONLY. No markdown whatsoever.
+- No asterisks, no underscores, no pound signs, no backticks, no bullet dashes.
+- No stage directions, no parenthetical cues, no brackets of any kind.
+- No bold, italic, or any other emphasis markers.
+- Speaker labels are the ONLY formatting allowed, written as "SPEAKER NAME:" on its own line, e.g. "EXPERT:" or "STUDENT:".
+- Sentences should read naturally when spoken aloud.
+
 Include a compelling episode title and a 1-2 sentence episode description at the top (labeled "TITLE:" and "DESCRIPTION:").`;
 
   const result = await withRetry(() =>
@@ -226,6 +233,8 @@ Include a compelling episode title and a 1-2 sentence episode description at the
   const script = text
     .replace(/TITLE:\s*.+\n?/i, "")
     .replace(/DESCRIPTION:\s*.+\n?/i, "")
+    .replace(/[*_`#]/g, "")
+    .replace(/\[([^\]]*)\]/g, "$1")
     .trim();
 
   return { title: podcastTitle, description, script };

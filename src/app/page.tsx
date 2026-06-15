@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GEMINI_MODELS, DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
+import { estimateTtsCost, formatUsd } from "@/lib/tts-cost";
+import type { TtsCostEstimate } from "@/types";
 
 interface FileEntry {
   id: string;
@@ -19,6 +21,8 @@ interface TextAudioArtifact {
   sourceName: string;
   title: string;
   script: string;
+  ttsProvider?: TtsProvider;
+  ttsCostEstimate?: TtsCostEstimate;
   audioFileName?: string;
   audioUrl?: string | null;
   audioStatus?: "idle" | "queued" | "generating" | "complete" | "error";
@@ -899,6 +903,11 @@ export default function HomePage() {
 
         {activeTextAudio && (
           <div className="bg-slate-900/50 rounded-xl p-4 space-y-3 border border-slate-800">
+            {(() => {
+              const ttsCost =
+                activeTextAudio.ttsCostEstimate ?? estimateTtsCost(activeTextAudio.script);
+              return (
+                <>
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <h3 className="font-semibold text-slate-100 truncate">{activeTextAudio.title}</h3>
@@ -906,6 +915,11 @@ export default function HomePage() {
                   {activeTextAudio.sourceName}
                   {activeTextAudio.audioFileName ? ` -> ${activeTextAudio.audioFileName}` : ""}
                 </p>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                  <span>{ttsCost.wordCount.toLocaleString()} words</span>
+                  <span>{ttsCost.characterCount.toLocaleString()} chars</span>
+                  <span>~{ttsCost.estimatedAudioMinutes.toFixed(1)} min audio</span>
+                </div>
               </div>
               {activeTextAudio.audioUrl && activeTextAudio.audioFileName && (
                 <a
@@ -930,6 +944,35 @@ export default function HomePage() {
                 </button>
               )}
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              {(["gemini", "deepgram"] as const).map((provider) => {
+                const estimate = ttsCost.providers[provider];
+                const isSelected = (activeTextAudio.ttsProvider ?? "gemini") === provider;
+                return (
+                  <div
+                    key={provider}
+                    className={`rounded-lg border px-3 py-2 ${
+                      isSelected
+                        ? "border-indigo-700 bg-indigo-950/30"
+                        : "border-slate-700 bg-slate-950/40"
+                    }`}
+                    title={estimate.billingBasis}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-slate-400 capitalize">{provider} TTS</span>
+                      {isSelected && <span className="text-indigo-300">selected</span>}
+                    </div>
+                    <div className="text-slate-100 font-semibold">
+                      {formatUsd(estimate.estimatedUsd)}
+                    </div>
+                    <div className="text-slate-500">{estimate.model}</div>
+                  </div>
+                );
+              })}
+            </div>
+                </>
+              );
+            })()}
             {activeAudioIsGenerating && (
               <div className="rounded-lg border border-indigo-800 bg-indigo-950/40 p-3">
                 <div className="mb-1 flex justify-between text-xs text-indigo-200">
