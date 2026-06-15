@@ -81,6 +81,7 @@ export default function HomePage() {
   const [textAudioArtifacts, setTextAudioArtifacts] = useState<TextAudioArtifact[]>([]);
   const [activeTextAudio, setActiveTextAudio] = useState<TextAudioArtifact | null>(null);
   const [generatingTextAudio, setGeneratingTextAudio] = useState(false);
+  const [savingDirectScript, setSavingDirectScript] = useState(false);
   const [generatingAudioId, setGeneratingAudioId] = useState<string | null>(null);
   const [textAudioError, setTextAudioError] = useState<string | null>(null);
   const [activeToolTab, setActiveToolTab] = useState<ToolTab>("recordings");
@@ -174,9 +175,13 @@ export default function HomePage() {
     }
   }
 
-  async function handleGenerateTextAudio() {
+  async function saveTextAudioArtifact(useTextAsScript: boolean) {
     if (!pastedText.trim()) return;
-    setGeneratingTextAudio(true);
+    if (useTextAsScript) {
+      setSavingDirectScript(true);
+    } else {
+      setGeneratingTextAudio(true);
+    }
     setTextAudioError(null);
 
     try {
@@ -187,10 +192,11 @@ export default function HomePage() {
           sourceName: textSourceName || "Pasted text",
           text: pastedText,
           geminiModel,
+          useTextAsScript,
         }),
       });
       const data = await res.json();
-      if (!res.ok && res.status !== 207) throw new Error(data.error ?? "Could not generate audio");
+      if (!res.ok && res.status !== 207) throw new Error(data.error ?? "Could not prepare script");
 
       const artifact: TextAudioArtifact = data.artifact;
       setTextAudioArtifacts((prev) => [artifact, ...prev]);
@@ -204,7 +210,16 @@ export default function HomePage() {
       );
     } finally {
       setGeneratingTextAudio(false);
+      setSavingDirectScript(false);
     }
+  }
+
+  async function handleGenerateTextAudio() {
+    await saveTextAudioArtifact(false);
+  }
+
+  async function handleUsePastedScript() {
+    await saveTextAudioArtifact(true);
   }
 
   async function handleCreateAudio(artifact: TextAudioArtifact) {
@@ -674,13 +689,13 @@ export default function HomePage() {
           <div>
             <h2 className="section-title text-sm">Text to Study Audio</h2>
             <p className="text-xs text-slate-500 mt-1">
-              Paste notes or load a text document. Crammer turns it into a detailed monologue
-              first, then you can create a WAV file named from the source.
+              Paste notes for a rewritten study script, or paste a finished script and send it
+              straight to audio.
             </p>
           </div>
           <button
             onClick={() => textFileInputRef.current?.click()}
-            disabled={generatingTextAudio || generatingAudioId !== null || isWorking}
+            disabled={generatingTextAudio || savingDirectScript || generatingAudioId !== null || isWorking}
             className="btn-secondary text-xs py-1.5 px-3 shrink-0"
           >
             Load document
@@ -697,7 +712,7 @@ export default function HomePage() {
         <input
           value={textSourceName}
           onChange={(e) => setTextSourceName(e.target.value)}
-          disabled={generatingTextAudio || generatingAudioId !== null || isWorking}
+          disabled={generatingTextAudio || savingDirectScript || generatingAudioId !== null || isWorking}
           className="input text-sm"
           placeholder="Source name, used for the audio filename"
         />
@@ -710,7 +725,7 @@ export default function HomePage() {
               if (firstWords) setTextSourceName(firstWords);
             }
           }}
-          disabled={generatingTextAudio || generatingAudioId !== null || isWorking}
+          disabled={generatingTextAudio || savingDirectScript || generatingAudioId !== null || isWorking}
           className="input min-h-40 resize-y text-sm leading-relaxed"
           placeholder="Paste lecture notes, textbook excerpts, slides text, or any study material here..."
         />
@@ -724,7 +739,7 @@ export default function HomePage() {
         <div className="flex flex-wrap gap-3 items-center">
           <button
             onClick={handleGenerateTextAudio}
-            disabled={!pastedText.trim() || generatingTextAudio || isWorking}
+            disabled={!pastedText.trim() || generatingTextAudio || savingDirectScript || isWorking}
             className="btn-primary flex items-center gap-2"
           >
             {generatingTextAudio ? (
@@ -736,8 +751,15 @@ export default function HomePage() {
               "Generate Study Script"
             )}
           </button>
+          <button
+            onClick={handleUsePastedScript}
+            disabled={!pastedText.trim() || generatingTextAudio || savingDirectScript || isWorking}
+            className="btn-secondary flex items-center gap-2"
+          >
+            {savingDirectScript ? "Preparing script..." : "Use Text as Script"}
+          </button>
           <span className="text-xs text-slate-500">
-            The script repeats dense ideas in simpler wording before audio generation.
+            Use Text as Script skips Gemini rewriting and sends the pasted script to TTS.
           </span>
         </div>
 

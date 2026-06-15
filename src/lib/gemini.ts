@@ -8,7 +8,7 @@ import { DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
 const GEMINI_TIMEOUT_MS = 600_000; // 10 min — large audio files need time
 const TEXT_AUDIO_TIMEOUT_MS = 120_000;
 const TTS_CHUNK_MAX_CHARS = 2_800;
-const GEMINI_TTS_MODEL = "gemini-2.5-flash-preview-tts";
+const GEMINI_TTS_MODEL = "gemini-3.1-flash-tts-preview";
 
 const getClient = () => {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -402,34 +402,38 @@ async function synthesizePcmChunk(text: string, chunkNumber: number, totalChunks
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY is not set in environment variables");
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TTS_MODEL}:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TTS_MODEL}:generateContent`;
   let response: Response;
   try {
-    response = await withRetry(() =>
-      fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: AbortSignal.timeout(TEXT_AUDIO_TIMEOUT_MS),
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: `Read this study script aloud in a warm, clear voice. This is part ${chunkNumber} of ${totalChunks}, so continue naturally without a big introduction or ending:\n\n${text}`,
+    response = await withRetry(
+      () =>
+        fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+          signal: AbortSignal.timeout(TEXT_AUDIO_TIMEOUT_MS),
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: `Read this study script aloud in a warm, clear voice. This is part ${chunkNumber} of ${totalChunks}, so continue naturally without a big introduction or ending:\n\n${text}`,
+                  },
+                ],
+              },
+            ],
+            generationConfig: {
+              responseModalities: ["AUDIO"],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: { voiceName: "Kore" },
                 },
-              ],
-            },
-          ],
-          generationConfig: {
-            responseModalities: ["AUDIO"],
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: { voiceName: "Kore" },
               },
             },
-          },
+            model: GEMINI_TTS_MODEL,
+          }),
         }),
-      })
+      5,
+      2000
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

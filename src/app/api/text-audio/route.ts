@@ -7,10 +7,11 @@ import { TextAudioArtifact } from "@/types";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { sourceName, text, geminiModel } = body as {
+    const { sourceName, text, geminiModel, useTextAsScript } = body as {
       sourceName?: string;
       text?: string;
       geminiModel?: string;
+      useTextAsScript?: boolean;
     };
 
     const trimmedText = text?.trim();
@@ -19,17 +20,22 @@ export async function POST(request: NextRequest) {
     }
     if (trimmedText.length < 20) {
       return NextResponse.json(
-        { error: "Add a little more text so Crammer can create a useful script" },
+        { error: "Add a little more text so Crammer can create useful audio" },
         { status: 400 }
       );
     }
 
     const cleanSourceName = sourceName?.trim() || "Pasted text";
-    const generated = await generateReadableScriptFromText(
-      cleanSourceName,
-      trimmedText,
-      geminiModel
-    );
+    const generated = useTextAsScript
+      ? {
+          title: cleanSourceName.replace(/\.[^.]+$/, "") || "Pasted Script",
+          script: trimmedText,
+        }
+      : await generateReadableScriptFromText(
+          cleanSourceName,
+          trimmedText,
+          geminiModel
+        );
     const id = uuidv4();
 
     const artifact: TextAudioArtifact = {
