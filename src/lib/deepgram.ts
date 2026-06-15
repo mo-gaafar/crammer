@@ -3,10 +3,11 @@ import fs from "fs";
 import { Transcription } from "@/types";
 import { withRetry } from "@/lib/retry";
 import { splitForTts, pcmToWav, countScriptAudioChunks } from "@/lib/tts-utils";
+import { cleanForSpokenFlow } from "@/lib/spoken-text";
 
 export { countScriptAudioChunks };
 
-const DEEPGRAM_TTS_MODEL = "aura-asteria-en";
+const DEEPGRAM_TTS_MODEL = "aura-2-helena-en";
 const DEEPGRAM_TTS_TIMEOUT_MS = 120_000;
 const DEEPGRAM_TTS_ATTEMPTS = 3;
 
@@ -50,7 +51,7 @@ export async function transcribeAudioFile(
     throw new Error("No transcription result returned from Deepgram");
   }
 
-  const text = alternative.transcript ?? "";
+  const text = cleanForSpokenFlow(alternative.transcript ?? "");
   const confidence = alternative.confidence ?? 0;
 
   const words = (alternative.words ?? []).map((w) => ({
@@ -64,7 +65,7 @@ export async function transcribeAudioFile(
   // Extract paragraphs if available
   const paragraphsData = alternative.paragraphs?.paragraphs ?? [];
   const paragraphs = paragraphsData.map((p) =>
-    p.sentences?.map((s) => s.text).join(" ") ?? ""
+    cleanForSpokenFlow(p.sentences?.map((s) => s.text).join(" ") ?? "")
   );
 
   const duration = result?.metadata?.duration ?? 0;
@@ -114,7 +115,7 @@ export async function synthesizeWithDeepgram(
   script: string,
   onProgress?: (progress: { done: number; total: number }) => void
 ): Promise<Buffer> {
-  const chunks = splitForTts(script);
+  const chunks = splitForTts(cleanForSpokenFlow(script));
   if (chunks.length === 0) throw new Error("Script is empty");
 
   onProgress?.({ done: 0, total: chunks.length });

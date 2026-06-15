@@ -3,6 +3,7 @@ import { GoogleAIFileManager } from "@google/generative-ai/server";
 import { AudioFile, Lecture, PodcastFormat, StudyTemplate, Transcription } from "@/types";
 import { withRetry } from "@/lib/retry";
 import { pcmToWav, splitForTts, countScriptAudioChunks } from "@/lib/tts-utils";
+import { cleanForSpokenFlow } from "@/lib/spoken-text";
 export { GEMINI_MODELS, DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
 import { DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
 
@@ -79,7 +80,7 @@ export async function transcribeWithGemini(
       )
     );
 
-    const text = result.response.text().trim();
+    const text = cleanForSpokenFlow(result.response.text());
     if (!text) throw new Error("Gemini returned an empty transcription");
 
     return { audioFileId, text, words: [], confidence: 1.0, duration: 0 };
@@ -211,8 +212,9 @@ The script should be engaging, educational, and approximately 10-20 minutes of a
 
 CRITICAL FORMATTING RULES — the script will be fed directly to a text-to-speech engine:
 - Use PLAIN TEXT ONLY. No markdown whatsoever.
-- No asterisks, no underscores, no pound signs, no backticks, no bullet dashes.
-- No stage directions, no parenthetical cues, no brackets of any kind.
+- No asterisks, underscores, pound signs, backticks, tildes, carets, pipes, angle brackets, bullets, or bullet dashes.
+- Avoid standalone pronounceable symbols that interrupt speech, including at signs, ampersands, percent signs, plus signs, and equals signs. Write them as words instead.
+- No stage directions, no parenthetical cues, no square brackets or curly brackets.
 - No bold, italic, or any other emphasis markers.
 - Speaker labels are the ONLY formatting allowed, written as "SPEAKER NAME:" on its own line, e.g. "EXPERT:" or "STUDENT:".
 - Sentences should read naturally when spoken aloud.
@@ -230,12 +232,10 @@ Include a compelling episode title and a 1-2 sentence episode description at the
   const podcastTitle = titleMatch?.[1]?.trim() ?? `${lecture.title} - Podcast`;
   const description = descMatch?.[1]?.trim() ?? lecture.summary;
 
-  const script = text
+  const script = cleanForSpokenFlow(text
     .replace(/TITLE:\s*.+\n?/i, "")
     .replace(/DESCRIPTION:\s*.+\n?/i, "")
-    .replace(/[*_`#]/g, "")
-    .replace(/\[([^\]]*)\]/g, "$1")
-    .trim();
+  );
 
   return { title: podcastTitle, description, script };
 }
@@ -322,6 +322,7 @@ Turn this source into a clear, readable audio script that can be spoken naturall
 - Add short transitions where they improve comprehension.
 - Keep the tone calm, direct, and low-pressure for a listener who has bad focus or feels stressed.
 - Avoid speaker labels such as HOST, GUIDE, Student, Expert, Alex, or Riley.
+- Use plain text only. Remove or rewrite asterisks, bullets, markdown symbols, brackets, at signs, ampersands, percent signs, plus signs, equals signs, and other symbols that would sound awkward through text-to-speech.
 
 Return:
 TITLE: <short title based on the source>
@@ -333,10 +334,10 @@ SCRIPT:
   );
   const raw = result.response.text().trim();
   const titleMatch = raw.match(/TITLE:\s*(.+)/i);
-  const script = raw
+  const script = cleanForSpokenFlow(raw
     .replace(/TITLE:\s*.+\n?/i, "")
     .replace(/^SCRIPT:\s*/i, "")
-    .trim();
+  );
 
   return {
     title: titleMatch?.[1]?.trim() || sourceName.replace(/\.[^.]+$/, "") || "Readable Script",
@@ -410,7 +411,7 @@ export async function synthesizeScriptAudio(
   script: string,
   onProgress?: (progress: { done: number; total: number }) => void
 ): Promise<Buffer> {
-  const chunks = splitForTts(script);
+  const chunks = splitForTts(cleanForSpokenFlow(script));
   if (chunks.length === 0) throw new Error("Script is empty");
 
   onProgress?.({ done: 0, total: chunks.length });
