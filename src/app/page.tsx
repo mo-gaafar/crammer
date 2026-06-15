@@ -19,12 +19,14 @@ interface TextAudioArtifact {
   sourceName: string;
   title: string;
   script: string;
-  audioFileName: string;
-  audioUrl: string;
+  audioFileName?: string;
+  audioUrl?: string | null;
+  audioError?: string;
 }
 
 type Phase = "idle" | "uploading" | "transcribing" | "processing" | "complete" | "error";
 type SttProvider = "deepgram" | "gemini";
+type ToolTab = "recordings" | "textAudio" | "drive";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -80,6 +82,7 @@ export default function HomePage() {
   const [activeTextAudio, setActiveTextAudio] = useState<TextAudioArtifact | null>(null);
   const [generatingTextAudio, setGeneratingTextAudio] = useState(false);
   const [textAudioError, setTextAudioError] = useState<string | null>(null);
+  const [activeToolTab, setActiveToolTab] = useState<ToolTab>("recordings");
 
   // Settings
   const [sttProvider, setSttProvider] = useState<SttProvider>("deepgram");
@@ -186,13 +189,21 @@ export default function HomePage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Could not generate audio");
+      if (!res.ok && res.status !== 207) throw new Error(data.error ?? "Could not generate audio");
 
       const artifact: TextAudioArtifact = data.artifact;
       setTextAudioArtifacts((prev) => [artifact, ...prev]);
       setActiveTextAudio(artifact);
+      if (artifact.audioError) {
+        setTextAudioError(`Script generated, but audio failed: ${artifact.audioError}`);
+      }
     } catch (err) {
-      setTextAudioError(err instanceof Error ? err.message : String(err));
+      const message = err instanceof Error ? err.message : String(err);
+      setTextAudioError(
+        message.toLowerCase().includes("fetch")
+          ? "The text-to-audio request could not reach the local API. Make sure the dev server is still running, then try again."
+          : message
+      );
     } finally {
       setGeneratingTextAudio(false);
     }
@@ -565,7 +576,36 @@ export default function HomePage() {
         )}
       </div>
 
+      <div className="flex gap-1 rounded-xl border border-slate-800 bg-slate-900/70 p-1">
+        {[
+          { id: "recordings", label: "Recordings", detail: `${files.length} file${files.length !== 1 ? "s" : ""}` },
+          { id: "textAudio", label: "Text to Audio", detail: `${textAudioArtifacts.length} audio` },
+          { id: "drive", label: "Drive Import", detail: driveListing ? `${driveSelected.size} selected` : "folder" },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveToolTab(tab.id as ToolTab)}
+            className={`min-w-0 flex-1 rounded-lg px-3 py-2 text-left transition-colors sm:px-4 ${
+              activeToolTab === tab.id
+                ? "bg-indigo-600 text-white"
+                : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+            }`}
+          >
+            <span className="block truncate text-sm font-semibold">{tab.label}</span>
+            <span
+              className={`block truncate text-[11px] ${
+                activeToolTab === tab.id ? "text-indigo-100" : "text-slate-500"
+              }`}
+            >
+              {tab.detail}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {/* Drop zone */}
+      {activeToolTab === "recordings" && (
+        <>
       <div
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
@@ -601,8 +641,11 @@ export default function HomePage() {
           </p>
         )}
       </div>
+        </>
+      )}
 
       {/* Text to audio */}
+      {activeToolTab === "textAudio" && (
       <div className="card space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -681,18 +724,27 @@ export default function HomePage() {
               <div className="min-w-0">
                 <h3 className="font-semibold text-slate-100 truncate">{activeTextAudio.title}</h3>
                 <p className="text-xs text-slate-500 truncate">
-                  {activeTextAudio.sourceName} -&gt; {activeTextAudio.audioFileName}
+                  {activeTextAudio.sourceName}
+                  {activeTextAudio.audioFileName ? ` -> ${activeTextAudio.audioFileName}` : ""}
                 </p>
               </div>
-              <a
-                href={activeTextAudio.audioUrl}
-                download={activeTextAudio.audioFileName}
-                className="btn-secondary text-xs py-1.5 px-3 shrink-0"
-              >
-                Download WAV
-              </a>
+              {activeTextAudio.audioUrl && activeTextAudio.audioFileName && (
+                <a
+                  href={activeTextAudio.audioUrl}
+                  download={activeTextAudio.audioFileName}
+                  className="btn-secondary text-xs py-1.5 px-3 shrink-0"
+                >
+                  Download WAV
+                </a>
+              )}
             </div>
-            <audio controls src={activeTextAudio.audioUrl} className="w-full" />
+            {activeTextAudio.audioUrl ? (
+              <audio controls src={activeTextAudio.audioUrl} className="w-full" />
+            ) : (
+              <div className="rounded-lg border border-amber-700 bg-amber-950/30 p-3 text-xs text-amber-200">
+                Audio is not available for this script yet.
+              </div>
+            )}
             <div className="bg-slate-800/60 rounded-lg p-3 text-xs text-slate-300 leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto border border-slate-700">
               {activeTextAudio.script}
             </div>
@@ -718,8 +770,10 @@ export default function HomePage() {
           </div>
         )}
       </div>
+      )}
 
       {/* Google Drive import */}
+      {activeToolTab === "drive" && (
       <div className="card space-y-3">
         <h2 className="section-title text-sm flex items-center gap-2">
           <span>📁</span> Import from Google Drive
@@ -825,16 +879,17 @@ export default function HomePage() {
           <p className="text-xs text-amber-400">{driveError}</p>
         )}
       </div>
+      )}
 
       {/* Error banner */}
-      {error && (
+      {activeToolTab === "recordings" && error && (
         <div className="bg-red-950/50 border border-red-800 rounded-xl p-4 text-red-300 text-sm">
           <strong>Error:</strong> {error}
         </div>
       )}
 
       {/* Phase message */}
-      {phaseMessage && (
+      {activeToolTab === "recordings" && phaseMessage && (
         <div className={`rounded-xl p-4 text-sm border ${
           phase === "complete"
             ? "bg-green-950/50 border-green-800 text-green-300"
@@ -863,7 +918,7 @@ export default function HomePage() {
       )}
 
       {/* File list */}
-      {files.length > 0 && (
+      {activeToolTab === "recordings" && files.length > 0 && (
         <div className="card space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="section-title">
@@ -981,7 +1036,7 @@ export default function HomePage() {
       )}
 
       {/* How it works */}
-      {files.length === 0 && (
+      {activeToolTab === "recordings" && files.length === 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8">
           {[
             {

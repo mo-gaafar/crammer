@@ -6,6 +6,7 @@ export { GEMINI_MODELS, DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
 import { DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
 
 const GEMINI_TIMEOUT_MS = 600_000; // 10 min — large audio files need time
+const TEXT_AUDIO_TIMEOUT_MS = 120_000;
 const GEMINI_TTS_MODEL = "gemini-2.5-flash-preview-tts";
 
 const getClient = () => {
@@ -266,7 +267,7 @@ DESCRIPTION: <one sentence describing the material>
 Then include the complete Markdown study material.`;
 
   const result = await withRetry(() =>
-    geminiModel.generateContent(prompt, { timeout: GEMINI_TIMEOUT_MS })
+    geminiModel.generateContent(prompt, { timeout: TEXT_AUDIO_TIMEOUT_MS })
   );
   const text = result.response.text();
 
@@ -357,31 +358,38 @@ export async function synthesizeScriptAudio(script: string): Promise<Buffer> {
   if (!apiKey) throw new Error("GEMINI_API_KEY is not set in environment variables");
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TTS_MODEL}:generateContent?key=${apiKey}`;
-  const response = await withRetry(() =>
-    fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: `Read this script aloud in a warm, clear study-podcast voice:\n\n${script}`,
+  let response: Response;
+  try {
+    response = await withRetry(() =>
+      fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(TEXT_AUDIO_TIMEOUT_MS),
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: `Read this script aloud in a warm, clear study-podcast voice:\n\n${script}`,
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: "Kore" },
               },
-            ],
-          },
-        ],
-        generationConfig: {
-          responseModalities: ["AUDIO"],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: "Kore" },
             },
           },
-        },
-      }),
-    })
-  );
+        }),
+      })
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Could not reach Gemini TTS. Check internet access, GEMINI_API_KEY, and TTS model access. Details: ${message}`);
+  }
 
   if (!response.ok) {
     const errorText = await response.text();

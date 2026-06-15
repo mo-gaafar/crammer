@@ -44,12 +44,37 @@ export async function POST(request: NextRequest) {
       trimmedText,
       geminiModel
     );
-    const audio = await synthesizeScriptAudio(generated.script);
-
     const id = uuidv4();
     const audioFileName = `${safeFileStem(cleanSourceName)}_script_audio.wav`;
     const audioPath = path.join(getUploadDir(), `${id}.wav`);
-    fs.writeFileSync(audioPath, audio);
+
+    let audio: Buffer | null = null;
+    let audioError: string | undefined;
+    try {
+      audio = await synthesizeScriptAudio(generated.script);
+      fs.writeFileSync(audioPath, audio);
+    } catch (err) {
+      audioError = err instanceof Error ? err.message : String(err);
+    }
+
+    if (!audio) {
+      return NextResponse.json(
+        {
+          artifact: {
+            id,
+            sourceName: cleanSourceName,
+            title: generated.title,
+            script: generated.script,
+            audioFileName,
+            mimeType: "audio/wav",
+            createdAt: new Date().toISOString(),
+            audioUrl: null,
+            audioError,
+          },
+        },
+        { status: 207 }
+      );
+    }
 
     const artifact: TextAudioArtifact = {
       id,
