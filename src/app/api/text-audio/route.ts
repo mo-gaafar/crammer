@@ -3,26 +3,8 @@ import { v4 as uuidv4 } from "uuid";
 import { generateReadableScriptFromText } from "@/lib/gemini";
 import { store } from "@/lib/store";
 import { estimateTtsCost } from "@/lib/tts-cost";
+import { serializeTextAudioArtifact } from "@/lib/text-audio-queue";
 import { TextAudioArtifact, TtsProvider } from "@/types";
-
-function serializeTextAudioArtifact(artifact: TextAudioArtifact) {
-  return {
-    id: artifact.id,
-    sourceName: artifact.sourceName,
-    title: artifact.title,
-    script: artifact.script,
-    ttsProvider: artifact.ttsProvider ?? "gemini",
-    ttsCostEstimate: artifact.ttsCostEstimate ?? estimateTtsCost(artifact.script),
-    audioFileName: artifact.audioFileName,
-    mimeType: artifact.mimeType,
-    createdAt: artifact.createdAt,
-    audioStatus: artifact.audioStatus,
-    audioChunksDone: artifact.audioChunksDone,
-    audioChunksTotal: artifact.audioChunksTotal,
-    audioUrl: artifact.audioPath ? `/api/text-audio/${artifact.id}` : null,
-    audioError: artifact.audioError,
-  };
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -68,6 +50,7 @@ export async function POST(request: NextRequest) {
       ttsCostEstimate: estimateTtsCost(generated.script),
       mimeType: "audio/wav",
       createdAt: new Date().toISOString(),
+      scriptStatus: "ready",
     };
 
     store.addTextAudioArtifact(artifact);

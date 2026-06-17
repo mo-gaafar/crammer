@@ -111,12 +111,15 @@ export interface TextAudioArtifact {
   sourceName: string;
   title: string;
   script: string;
+  rawText?: string;
   ttsProvider?: TtsProvider;
   ttsCostEstimate?: TtsCostEstimate;
   audioPath?: string;
   audioFileName?: string;
   mimeType: "audio/wav";
   createdAt: string; // ISO string
+  scriptStatus?: "pending" | "generating" | "ready" | "error";
+  scriptError?: string;
   audioStatus?: "idle" | "queued" | "generating" | "complete" | "error";
   audioChunksDone?: number;
   audioChunksTotal?: number;

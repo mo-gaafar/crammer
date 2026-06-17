@@ -150,6 +150,9 @@ export const store = {
       b.createdAt.localeCompare(a.createdAt)
     );
   },
+  deleteTextAudioArtifact(id: string): void {
+    getStore().textAudioArtifacts.delete(id);
+  },
 
   // Status
   getStatus(): ProcessingStatus {
