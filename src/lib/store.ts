@@ -125,6 +125,11 @@ export const store = {
       .filter((m) => m.lectureId === lectureId)
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   },
+  getAllStudyMaterials(): StudyMaterial[] {
+    return Array.from(getStore().studyMaterials.values()).sort((a, b) =>
+      b.createdAt.localeCompare(a.createdAt)
+    );
+  },
 
   // Text-to-audio artifacts
   addTextAudioArtifact(artifact: TextAudioArtifact): void {

@@ -67,7 +67,9 @@ export interface StudyTemplate {
 
 export interface StudyMaterial {
   id: string;
-  lectureId: string;
+  lectureId?: string;
+  /** Display name for standalone materials generated from pasted text (no lecture). */
+  sourceName?: string;
   templateId: string;
   type: StudyMaterialType;
   title: string;

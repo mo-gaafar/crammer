@@ -295,6 +295,59 @@ Then include the complete Markdown study material.`;
   return { title, description, contentMarkdown };
 }
 
+/**
+ * Generate a study material from a reusable template, using raw pasted text
+ * instead of a stored Lecture (standalone, not tied to any lecture).
+ */
+export async function generateStudyMaterialFromText(
+  sourceName: string,
+  text: string,
+  template: StudyTemplate,
+  model: string = DEFAULT_GEMINI_MODEL
+): Promise<{ title: string; description: string; contentMarkdown: string }> {
+  const geminiModel = getClient().getGenerativeModel({ model });
+
+  const prompt = `You are an academic study-material designer.
+
+SOURCE NAME:
+${sourceName}
+
+TEMPLATE:
+Name: ${template.name}
+Type: ${template.type}
+Description: ${template.description}
+
+TEMPLATE INSTRUCTIONS:
+${template.prompt.replace(/lecture/gi, "source text")}
+
+SOURCE TEXT:
+${text.slice(0, 80_000)}
+
+Return the material in clean Markdown.
+Start with:
+TITLE: <specific title>
+DESCRIPTION: <one sentence describing the material>
+
+Then include the complete Markdown study material.`;
+
+  const result = await withRetry(() =>
+    geminiModel.generateContent(prompt, { timeout: TEXT_AUDIO_TIMEOUT_MS })
+  );
+  const responseText = result.response.text();
+
+  const titleMatch = responseText.match(/TITLE:\s*(.+)/i);
+  const descMatch = responseText.match(/DESCRIPTION:\s*(.+)/i);
+
+  const title = titleMatch?.[1]?.trim() ?? `${sourceName} - ${template.name}`;
+  const description = descMatch?.[1]?.trim() ?? template.description;
+  const contentMarkdown = responseText
+    .replace(/TITLE:\s*.+\n?/i, "")
+    .replace(/DESCRIPTION:\s*.+\n?/i, "")
+    .trim();
+
+  return { title, description, contentMarkdown };
+}
+
 export async function generateReadableScriptFromText(
   sourceName: string,
   text: string,

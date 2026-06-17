@@ -36,14 +36,9 @@ export default function RootLayout({
                   <span className="text-indigo-400">Cram</span>mer
                 </span>
               </Link>
-              <div className="ml-auto flex items-center gap-1 rounded-lg border border-slate-800 bg-slate-900/70 p-1 text-sm sm:ml-2">
-                <Link href="/" className="nav-link">
-                  Workspace
-                </Link>
-                <Link href="/lectures" className="nav-link">
-                  Library
-                </Link>
-              </div>
+              <Link href="/lectures" className="nav-link ml-auto sm:ml-2">
+                Library
+              </Link>
               <SettingsPopover />
             </div>
           </nav>
