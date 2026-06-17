@@ -59,9 +59,9 @@ export default function HubPage() {
     <div className="max-w-5xl mx-auto px-4 py-12 space-y-10">
       <div className="text-center space-y-3">
         <h1 className="text-4xl font-bold">
-          <span className="text-indigo-400">Cram</span>mer
+          <span className="text-espresso-700">Study</span>Forge
         </h1>
-        <p className="text-slate-400 max-w-xl mx-auto">
+        <p className="text-stone-600 max-w-xl mx-auto">
           Pick a tool. Every tool turns what you give it — recordings or text — into study
           material you can review, listen to, or export.
         </p>
@@ -72,14 +72,14 @@ export default function HubPage() {
           <Link
             key={tool.href}
             href={tool.href}
-            className="card group flex flex-col gap-3 hover:border-indigo-600/50 hover:bg-slate-700/40 transition-all"
+            className="card group flex flex-col gap-3 hover:border-espresso-600/50 hover:bg-stone-300/40 transition-all"
           >
             <div className="text-4xl">{tool.icon}</div>
-            <h2 className="font-semibold text-slate-100 group-hover:text-indigo-300 transition-colors leading-snug">
+            <h2 className="font-semibold text-stone-900 group-hover:text-espresso-700 transition-colors leading-snug">
               {tool.title}
             </h2>
-            <p className="text-slate-400 text-sm leading-relaxed flex-1">{tool.description}</p>
-            <span className="text-xs text-slate-500">
+            <p className="text-stone-600 text-sm leading-relaxed flex-1">{tool.description}</p>
+            <span className="text-xs text-stone-500">
               {tool.countLabel(counts[tool.href] ?? 0)}
             </span>
           </Link>
@@ -87,7 +87,7 @@ export default function HubPage() {
       </div>
 
       <div className="text-center">
-        <Link href="/lectures" className="text-sm text-indigo-400 hover:underline">
+        <Link href="/lectures" className="text-sm text-espresso-700 hover:underline">
           View everything you've generated →
         </Link>
       </div>

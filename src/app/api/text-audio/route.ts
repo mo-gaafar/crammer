@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
     if (trimmedText.length < 20) {
       return NextResponse.json(
-        { error: "Add a little more text so Crammer can create useful audio" },
+        { error: "Add a little more text so StudyForge can create useful audio" },
         { status: 400 }
       );
     }

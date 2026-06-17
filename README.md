@@ -1,22 +1,22 @@
-# Crammer
+# StudyForge
 
 > Open source AI study material generator for lectures, transcripts, course
 > recordings, flashcards, quizzes, study guides, printable question banks, and
 > review podcasts.
 
-Crammer is an open source education SaaS project for turning lectures,
+StudyForge is an open source education SaaS project for turning lectures,
 recordings, and transcripts into reusable study materials.
 
 The current app can upload lecture recordings, transcribe them with Deepgram or
 Gemini, group related recordings into lectures with Gemini, and generate podcast
-scripts for study on the go. The product direction is broader: Crammer should
+scripts for study on the go. The product direction is broader: StudyForge should
 become a study-material engine that transforms raw course content into
 templates such as study guides, flashcards, quizzes, glossaries, cram sheets,
 and review podcasts.
 
 ## Product Direction
 
-Crammer is designed around two audiences:
+StudyForge is designed around two audiences:
 
 - **Self-hosters and open source users** who want a useful BYOK tool they can
   run with their own provider accounts.
@@ -33,11 +33,11 @@ Read the planning docs:
 - [Business Model](docs/business-model.md)
 - [BYOK and Provider Keys](docs/byok.md)
 - [Study Material Templates](docs/study-material-templates.md)
-- [Crammer MCP](docs/mcp.md)
+- [StudyForge MCP](docs/mcp.md)
 - [Architecture Roadmap](docs/architecture-roadmap.md)
 - [Work Plan](docs/work-plan.md)
 - [Contributing](CONTRIBUTING.md)
-- [Support Crammer](DONATIONS.md)
+- [Support StudyForge](DONATIONS.md)
 
 ## Search Keywords
 
@@ -67,10 +67,10 @@ Deepgram, Next.js, MCP, Anki export, DOCX study guide, printable question bank.
 - Add exports for Markdown, PDF, Anki-compatible CSV, and shareable bundles.
 - Add printable lecture study documents with concept maps, tiered questions,
   writing space, and separated model answers.
-- Add a Crammer MCP server so agents and external tools can search lectures,
+- Add a StudyForge MCP server so agents and external tools can search lectures,
   read transcripts, generate materials, and export study packs.
 - Add account, workspace, subscription, and usage-metering foundations for
-  Crammer Cloud.
+  StudyForge Cloud.
 - Keep BYOK as a first-class self-hosted and cloud option.
 
 ## Setup

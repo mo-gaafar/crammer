@@ -32,7 +32,7 @@ export default function SettingsPopover() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 rounded-md border border-slate-800 bg-slate-900/70 px-2.5 py-1.5 text-xs text-slate-400 transition-colors hover:border-slate-600 hover:text-slate-200"
+        className="flex items-center gap-1.5 rounded-md border border-stone-200 bg-stone-100/70 px-2.5 py-1.5 text-xs text-stone-600 transition-colors hover:border-stone-400 hover:text-stone-800"
         title="Provider settings"
       >
         <span aria-hidden>⚙</span>
@@ -45,7 +45,7 @@ export default function SettingsPopover() {
         <div className="popover absolute right-0 top-full z-50 mt-2 w-72">
           <div className="space-y-4 p-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-400">Transcription Provider</label>
+              <label className="text-xs font-medium text-stone-600">Transcription Provider</label>
               <div className="flex gap-2">
                 {(["deepgram", "gemini"] as SttProvider[]).map((p) => (
                   <button
@@ -53,8 +53,8 @@ export default function SettingsPopover() {
                     onClick={() => settings.setSttProvider(p)}
                     className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
                       settings.sttProvider === p
-                        ? "border-indigo-500 bg-indigo-600 text-white"
-                        : "border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-500"
+                        ? "border-espresso-500 bg-espresso-600 text-white"
+                        : "border-stone-300 bg-stone-200 text-stone-600 hover:border-stone-500"
                     }`}
                   >
                     {p === "deepgram" ? "Deepgram Nova-2" : "Gemini STT"}
@@ -64,7 +64,7 @@ export default function SettingsPopover() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-400">Audio Synthesis Provider</label>
+              <label className="text-xs font-medium text-stone-600">Audio Synthesis Provider</label>
               <div className="flex gap-2">
                 {(["gemini", "deepgram"] as TtsProvider[]).map((p) => (
                   <button
@@ -72,8 +72,8 @@ export default function SettingsPopover() {
                     onClick={() => settings.setTtsProvider(p)}
                     className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
                       settings.ttsProvider === p
-                        ? "border-indigo-500 bg-indigo-600 text-white"
-                        : "border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-500"
+                        ? "border-espresso-500 bg-espresso-600 text-white"
+                        : "border-stone-300 bg-stone-200 text-stone-600 hover:border-stone-500"
                     }`}
                   >
                     {p === "deepgram" ? "Deepgram Aura" : "Gemini TTS"}
@@ -83,13 +83,13 @@ export default function SettingsPopover() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-400">
-                Gemini Model <span className="text-slate-600">(inference &amp; STT)</span>
+              <label className="text-xs font-medium text-stone-600">
+                Gemini Model <span className="text-stone-400">(inference &amp; STT)</span>
               </label>
               <select
                 value={settings.geminiModel}
                 onChange={(e) => settings.setGeminiModel(e.target.value)}
-                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                className="w-full rounded-lg border border-stone-300 bg-stone-200 px-3 py-1.5 text-xs text-stone-800 focus:outline-none focus:border-espresso-500"
               >
                 {GEMINI_MODELS.map((m) => (
                   <option key={m.id} value={m.id}>

@@ -89,8 +89,8 @@ export default function StudyMaterialsToolPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-10 space-y-6">
       <div className="text-center space-y-3">
-        <h1 className="text-3xl font-bold text-slate-100">Text → Study Materials</h1>
-        <p className="text-slate-400 max-w-xl mx-auto">
+        <h1 className="text-3xl font-bold text-stone-900">Text → Study Materials</h1>
+        <p className="text-stone-600 max-w-xl mx-auto">
           Paste any notes, textbook excerpt, or slides text. Pick a template and Gemini will turn
           it into a study guide, flashcards, a quiz, a glossary, or a cram sheet.
         </p>
@@ -106,17 +106,17 @@ export default function StudyMaterialsToolPage() {
               disabled={generating}
               className={`text-left p-4 rounded-xl border-2 transition-all ${
                 selectedTemplateId === template.id
-                  ? "border-indigo-500 bg-indigo-500/10"
-                  : "border-slate-700 bg-slate-900/50 hover:border-slate-600"
+                  ? "border-espresso-500 bg-espresso-500/10"
+                  : "border-stone-300 bg-stone-100/50 hover:border-stone-400"
               }`}
             >
               <div className="flex items-center justify-between gap-3">
-                <div className="font-medium text-slate-200 text-sm">{template.name}</div>
+                <div className="font-medium text-stone-800 text-sm">{template.name}</div>
                 <span className={template.source === "community" ? "badge-green" : "badge-indigo"}>
                   {template.source}
                 </span>
               </div>
-              <div className="text-slate-500 text-xs mt-2 leading-relaxed">
+              <div className="text-stone-500 text-xs mt-2 leading-relaxed">
                 {template.description}
               </div>
               {template.exports.includes("anki-csv") && (
@@ -174,15 +174,15 @@ export default function StudyMaterialsToolPage() {
 
       {materials.length > 1 && (
         <div className="flex gap-2 flex-wrap">
-          <span className="text-xs text-slate-500 self-center">Generated:</span>
+          <span className="text-xs text-stone-500 self-center">Generated:</span>
           {materials.map((material) => (
             <button
               key={material.id}
               onClick={() => setActiveMaterial(material)}
               className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
                 activeMaterial?.id === material.id
-                  ? "border-indigo-500 text-indigo-300 bg-indigo-500/10"
-                  : "border-slate-700 text-slate-400 hover:border-slate-500"
+                  ? "border-espresso-500 text-espresso-700 bg-espresso-500/10"
+                  : "border-stone-300 text-stone-600 hover:border-stone-500"
               }`}
             >
               {material.sourceName ?? material.title}
@@ -195,11 +195,11 @@ export default function StudyMaterialsToolPage() {
         <div className="card space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h3 className="font-bold text-slate-100 text-lg leading-snug">{activeMaterial.title}</h3>
-              <p className="text-slate-400 text-sm mt-1">{activeMaterial.description}</p>
+              <h3 className="font-bold text-stone-900 text-lg leading-snug">{activeMaterial.title}</h3>
+              <p className="text-stone-600 text-sm mt-1">{activeMaterial.description}</p>
               <div className="flex items-center gap-3 mt-2">
                 <span className="badge-indigo">{activeMaterial.type.replace(/_/g, " ")}</span>
-                <span className="text-xs text-slate-500">{activeWordCount} words</span>
+                <span className="text-xs text-stone-500">{activeWordCount} words</span>
               </div>
             </div>
             <div className="flex gap-2 shrink-0">
@@ -234,12 +234,12 @@ export default function StudyMaterialsToolPage() {
       {generating && (
         <div className="card flex items-center justify-center py-16 space-y-4 flex-col text-center">
           <div className="text-5xl animate-pulse-slow">✨</div>
-          <p className="text-slate-300 font-medium">Gemini is shaping your material...</p>
+          <p className="text-stone-700 font-medium">Gemini is shaping your material...</p>
         </div>
       )}
 
       {materials.length === 0 && !generating && (
-        <div className="card text-center py-12 space-y-3 text-slate-500">
+        <div className="card text-center py-12 space-y-3 text-stone-500">
           <div className="text-4xl">📚</div>
           <p>No study materials generated yet. Paste some text and hit Generate.</p>
         </div>

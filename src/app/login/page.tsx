@@ -43,7 +43,7 @@ function LoginForm() {
   }
 
   return (
-    <main className="relative overflow-hidden bg-slate-950 text-slate-100">
+    <main className="relative overflow-hidden bg-stone-50 text-stone-900">
       <div className="pointer-events-none absolute inset-0 hidden opacity-50 sm:block">
         <div className="landing-wave landing-wave-a" />
         <div className="landing-wave landing-wave-b" />
@@ -52,16 +52,16 @@ function LoginForm() {
 
       <section className="relative mx-auto grid min-h-[calc(100vh-7.5rem)] max-w-6xl items-center gap-8 px-4 py-8 sm:px-6 sm:py-10 lg:grid-cols-[1.02fr_0.98fr] lg:px-8">
         <div className="space-y-7">
-          <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-indigo-300/20 bg-indigo-500/10 px-3 py-1.5 text-xs font-medium text-indigo-100 sm:text-sm">
+          <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-espresso-300/20 bg-espresso-500/10 px-3 py-1.5 text-xs font-medium text-espresso-900 sm:text-sm">
             <img src="/icon.svg" alt="" className="h-5 w-5 rounded-md" />
             <span className="truncate">Self-hosted AI study workflow</span>
           </div>
 
           <div className="space-y-5">
-            <h1 className="max-w-3xl text-4xl font-black leading-tight tracking-normal text-white sm:text-5xl lg:text-6xl">
+            <h1 className="max-w-3xl text-4xl font-black leading-tight tracking-normal text-stone-900 sm:text-5xl lg:text-6xl">
               Turn lecture recordings into study material that is ready to use.
             </h1>
-            <p className="max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
+            <p className="max-w-2xl text-base leading-7 text-stone-700 sm:text-lg">
               Upload class recordings, create clean transcripts, group them into
               lectures, and generate review podcasts without leaving your own app.
             </p>
@@ -69,19 +69,19 @@ function LoginForm() {
 
           <div className="grid gap-3 sm:grid-cols-3">
             {highlights.map((item) => (
-              <div key={item.label} className="rounded-lg border border-slate-800 bg-slate-900/80 p-4 shadow-lg shadow-black/10">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-300">{item.label}</p>
-                <p className="mt-2 text-sm font-semibold text-slate-100">{item.value}</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">{item.detail}</p>
+              <div key={item.label} className="rounded-lg border border-stone-200 bg-stone-100/80 p-4 shadow-lg shadow-black/10">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-espresso-700">{item.label}</p>
+                <p className="mt-2 text-sm font-semibold text-stone-900">{item.value}</p>
+                <p className="mt-1 text-xs leading-5 text-stone-500">{item.detail}</p>
               </div>
             ))}
           </div>
 
-          <div className="overflow-hidden rounded-lg border border-slate-800 bg-slate-900/70 p-2">
+          <div className="overflow-hidden rounded-lg border border-stone-200 bg-stone-100/70 p-2">
             <div className="grid grid-cols-4 gap-2">
               {flow.map((step, index) => (
-                <div key={step} className="flex min-w-0 items-center gap-2 rounded-md bg-slate-950/70 px-2.5 py-2 text-xs text-slate-300 sm:px-3">
-                  <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-indigo-500/20 text-[11px] font-semibold text-indigo-200">
+                <div key={step} className="flex min-w-0 items-center gap-2 rounded-md bg-stone-50/70 px-2.5 py-2 text-xs text-stone-700 sm:px-3">
+                  <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-espresso-500/20 text-[11px] font-semibold text-espresso-800">
                     {index + 1}
                   </span>
                   <span className="truncate">{step}</span>
@@ -92,21 +92,21 @@ function LoginForm() {
         </div>
 
         <div className="grid gap-4">
-          <div className="relative overflow-hidden rounded-xl border border-slate-800 bg-slate-900 shadow-2xl shadow-black/30">
+          <div className="relative overflow-hidden rounded-xl border border-stone-200 bg-stone-100 shadow-2xl shadow-black/30">
             <img
               src="/images/crammer-landing-hero.png"
               alt=""
               className="aspect-[16/10] w-full object-cover opacity-90"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/10 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-stone-50 via-stone-50/10 to-transparent" />
             <div className="absolute bottom-4 left-4 right-4">
-              <div className="rounded-lg border border-white/10 bg-slate-950/80 p-3 backdrop-blur">
+              <div className="rounded-lg border border-white/10 bg-stone-50/80 p-3 backdrop-blur">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-white">Lecture set processed</p>
-                    <p className="mt-1 text-xs text-slate-400">3 transcripts grouped into 2 review sessions</p>
+                    <p className="truncate text-sm font-semibold text-stone-900">Lecture set processed</p>
+                    <p className="mt-1 text-xs text-stone-600">3 transcripts grouped into 2 review sessions</p>
                   </div>
-                  <span className="shrink-0 rounded-full bg-green-500/15 px-2.5 py-1 text-xs font-medium text-green-300">
+                  <span className="shrink-0 rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-800">
                     Ready
                   </span>
                 </div>
@@ -114,12 +114,12 @@ function LoginForm() {
             </div>
           </div>
 
-          <div className="relative overflow-hidden rounded-xl border border-slate-800 bg-slate-900/95 p-5 shadow-xl shadow-black/20 sm:p-6">
+          <div className="relative overflow-hidden rounded-xl border border-stone-200 bg-stone-100/95 p-5 shadow-xl shadow-black/20 sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-indigo-300">Private workspace</p>
-                <h2 className="mt-1 text-2xl font-bold text-white">Unlock Crammer</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-400">
+                <p className="text-sm font-medium text-espresso-700">Private workspace</p>
+                <h2 className="mt-1 text-2xl font-bold text-stone-900">Unlock StudyForge</h2>
+                <p className="mt-2 text-sm leading-6 text-stone-600">
                   Enter the app secret to continue to your dashboard.
                 </p>
               </div>
@@ -127,7 +127,7 @@ function LoginForm() {
                 {[28, 42, 24, 52, 34, 46].map((height, index) => (
                   <span
                     key={index}
-                    className="w-1.5 rounded-full bg-indigo-300/80 landing-eq"
+                    className="w-1.5 rounded-full bg-espresso-300/80 landing-eq"
                     style={{ height, animationDelay: `${index * 120}ms` }}
                   />
                 ))}
@@ -152,7 +152,7 @@ function LoginForm() {
               </div>
 
               {error && (
-                <p className="rounded-lg border border-red-400/20 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                   {error}
                 </p>
               )}
@@ -166,9 +166,9 @@ function LoginForm() {
               </button>
             </form>
 
-            <div className="mt-5 grid grid-cols-3 gap-2 border-t border-slate-800 pt-5">
+            <div className="mt-5 grid grid-cols-3 gap-2 border-t border-stone-200 pt-5">
               {["Local files", "Drive import", "AI scripts"].map((item) => (
-                <div key={item} className="rounded-lg bg-slate-950 px-2 py-2 text-center text-[11px] leading-4 text-slate-400 sm:text-xs">
+                <div key={item} className="rounded-lg bg-stone-50 px-2 py-2 text-center text-[11px] leading-4 text-stone-600 sm:text-xs">
                   {item}
                 </div>
               ))}

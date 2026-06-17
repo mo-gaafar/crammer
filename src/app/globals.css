@@ -4,42 +4,42 @@
 
 @layer base {
   :root {
-    --bg-primary: #0f172a;
-    --bg-secondary: #1e293b;
-    --bg-card: #1e293b;
-    --border: #334155;
-    --text-primary: #f1f5f9;
-    --text-secondary: #94a3b8;
-    --accent: #6366f1;
-    --accent-hover: #4f46e5;
+    --bg-primary: #faf6f3;
+    --bg-secondary: #ffffff;
+    --bg-card: #ffffff;
+    --border: #e6d0bf;
+    --text-primary: #2b1810;
+    --text-secondary: #7d5236;
+    --accent: #5e3d29;
+    --accent-hover: #43291b;
   }
 
   body {
-    @apply bg-slate-950 text-slate-100 antialiased;
+    @apply bg-stone-50 text-stone-900 antialiased;
   }
 
   * {
-    @apply border-slate-700;
+    @apply border-stone-200;
   }
 }
 
 @layer components {
   .card {
-    @apply bg-slate-800 border border-slate-700 rounded-xl p-6;
+    @apply bg-white border border-stone-200 rounded-xl p-6 shadow-sm;
   }
 
   .btn-primary {
-    @apply bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-5 py-2.5 rounded-lg
+    @apply bg-espresso-800 hover:bg-espresso-900 text-white font-medium px-5 py-2.5 rounded-lg
            transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
   }
 
   .btn-secondary {
-    @apply bg-slate-700 hover:bg-slate-600 text-slate-100 font-medium px-5 py-2.5 rounded-lg
-           transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
+    @apply bg-stone-100 hover:bg-stone-200 text-stone-900 font-medium px-5 py-2.5 rounded-lg
+           border border-stone-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
   }
 
   .btn-danger {
-    @apply bg-red-600 hover:bg-red-500 text-white font-medium px-5 py-2.5 rounded-lg
+    @apply bg-red-600 hover:bg-red-700 text-white font-medium px-5 py-2.5 rounded-lg
            transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
   }
 
@@ -48,37 +48,37 @@
   }
 
   .badge-indigo {
-    @apply badge bg-indigo-500/20 text-indigo-300;
+    @apply badge bg-espresso-100 text-espresso-800;
   }
 
   .badge-green {
-    @apply badge bg-green-500/20 text-green-300;
+    @apply badge bg-green-100 text-green-800;
   }
 
   .badge-yellow {
-    @apply badge bg-yellow-500/20 text-yellow-300;
+    @apply badge bg-yellow-100 text-yellow-800;
   }
 
   .badge-red {
-    @apply badge bg-red-500/20 text-red-300;
+    @apply badge bg-red-100 text-red-800;
   }
 
   .badge-slate {
-    @apply badge bg-slate-600 text-slate-300;
+    @apply badge bg-stone-200 text-stone-700;
   }
 
   .input {
-    @apply bg-slate-900 border border-slate-700 text-slate-100 rounded-lg px-4 py-2.5
-           focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent
-           placeholder-slate-500 w-full;
+    @apply bg-white border border-stone-300 text-stone-900 rounded-lg px-4 py-2.5
+           focus:outline-none focus:ring-2 focus:ring-espresso-600 focus:border-transparent
+           placeholder-stone-400 w-full;
   }
 
   .section-title {
-    @apply text-lg font-semibold text-slate-200;
+    @apply text-lg font-semibold text-stone-800;
   }
 
   .label {
-    @apply text-sm font-medium text-slate-400;
+    @apply text-sm font-medium text-stone-600;
   }
 
   .status-uploaded { @apply badge-slate; }
@@ -87,19 +87,19 @@
   .status-error { @apply badge-red; }
 
   .popover {
-    @apply rounded-xl border border-slate-700 bg-slate-900 shadow-2xl shadow-black/40;
+    @apply rounded-xl border border-stone-200 bg-white shadow-2xl shadow-stone-900/10;
   }
 
   .subtle-panel {
-    @apply bg-slate-900/40 rounded-xl p-6;
+    @apply bg-stone-100/70 rounded-xl p-6;
   }
 
   .nav-link {
-    @apply rounded-md px-2.5 py-1.5 text-sm text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 sm:px-3;
+    @apply rounded-md px-2.5 py-1.5 text-sm text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900 sm:px-3;
   }
 
   .nav-link-active {
-    @apply nav-link bg-slate-800 text-slate-100;
+    @apply nav-link bg-stone-100 text-stone-900;
   }
 
   .status-dot {
@@ -109,17 +109,17 @@
 
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { @apply bg-slate-900; }
-::-webkit-scrollbar-thumb { @apply bg-slate-600 rounded-full; }
-::-webkit-scrollbar-thumb:hover { @apply bg-slate-500; }
+::-webkit-scrollbar-track { @apply bg-stone-100; }
+::-webkit-scrollbar-thumb { @apply bg-stone-300 rounded-full; }
+::-webkit-scrollbar-thumb:hover { @apply bg-stone-400; }
 
 /* Prose styles for podcast scripts */
 .podcast-script {
-  @apply text-slate-300 leading-relaxed text-sm;
+  @apply text-stone-700 leading-relaxed text-sm;
 }
 
 .podcast-script strong {
-  @apply text-slate-100 font-semibold;
+  @apply text-stone-900 font-semibold;
 }
 
 .podcast-script p {
@@ -127,7 +127,7 @@
 }
 
 .large-text-viewer {
-  @apply block w-full resize-y bg-slate-900/50 rounded-xl border-0 p-5 text-slate-300 text-sm leading-relaxed font-sans outline-none;
+  @apply block w-full resize-y bg-stone-100/60 rounded-xl border-0 p-5 text-stone-700 text-sm leading-relaxed font-sans outline-none;
   min-height: 18rem;
   white-space: pre-wrap;
   overflow-y: auto;
@@ -140,7 +140,7 @@
   left: 8%;
   right: 8%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(103, 232, 249, 0.85), rgba(251, 113, 133, 0.55), transparent);
+  background: linear-gradient(90deg, transparent, rgba(125, 82, 54, 0.65), rgba(180, 110, 70, 0.45), transparent);
   transform-origin: center;
   animation: landing-wave-drift 9s ease-in-out infinite;
 }

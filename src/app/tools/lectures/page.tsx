@@ -37,13 +37,13 @@ function formatDate(iso: string): string {
 
 function StatusBadge({ status }: { status: FileEntry["status"] }) {
   const map: Record<FileEntry["status"], string> = {
-    uploaded: "bg-slate-500",
+    uploaded: "bg-stone-500",
     transcribing: "bg-yellow-400 animate-pulse",
     transcribed: "bg-green-400",
     error: "bg-red-400",
   };
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-slate-400">
+    <span className="inline-flex items-center gap-1.5 text-xs text-stone-600">
       <span className={`status-dot ${map[status]}`} />
       {status}
     </span>
@@ -401,8 +401,8 @@ export default function LecturePipelinePage() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-10 space-y-8">
       <div className="text-center space-y-3">
-        <h1 className="text-3xl font-bold text-slate-100">Lecture Recordings → Script → Audio</h1>
-        <p className="text-slate-400 max-w-xl mx-auto">
+        <h1 className="text-3xl font-bold text-stone-900">Lecture Recordings → Script → Audio</h1>
+        <p className="text-stone-600 max-w-xl mx-auto">
           Drop your voice notes from any lectures. We&apos;ll transcribe them, group them into
           lectures with <span className="text-blue-400">Gemini</span>, and generate podcast
           scripts so you can study on the go.
@@ -410,13 +410,13 @@ export default function LecturePipelinePage() {
       </div>
 
       {files.length > 0 && (
-        <div className="flex items-center justify-center gap-2 text-xs font-medium text-slate-500">
+        <div className="flex items-center justify-center gap-2 text-xs font-medium text-stone-500">
           {pipelineSteps.map((step, i) => (
             <span key={step.label} className="flex items-center gap-2">
-              <span className={step.count > 0 ? "text-indigo-300" : "text-slate-500"}>
+              <span className={step.count > 0 ? "text-espresso-700" : "text-stone-500"}>
                 {step.label} {step.count > 0 && `· ${step.count}`}
               </span>
-              {i < pipelineSteps.length - 1 && <span className="text-slate-700">→</span>}
+              {i < pipelineSteps.length - 1 && <span className="text-stone-300">→</span>}
             </span>
           ))}
         </div>
@@ -438,8 +438,8 @@ export default function LecturePipelinePage() {
           relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer
           transition-all select-none
           ${isDragging
-            ? "border-indigo-400 bg-indigo-500/10 scale-[1.01]"
-            : "border-slate-700 hover:border-slate-500 hover:bg-slate-800/50"
+            ? "border-espresso-400 bg-espresso-500/10 scale-[1.01]"
+            : "border-stone-300 hover:border-stone-500 hover:bg-stone-200/50"
           }
         `}
       >
@@ -452,14 +452,14 @@ export default function LecturePipelinePage() {
           onChange={onFileInput}
         />
         <div className="text-5xl mb-4">🎙️</div>
-        <p className="text-slate-300 font-medium text-lg">
+        <p className="text-stone-700 font-medium text-lg">
           {isDragging ? "Drop your voice notes here" : "Drop audio files or click to select"}
         </p>
-        <p className="text-slate-500 text-sm mt-2">
+        <p className="text-stone-500 text-sm mt-2">
           Supports MP3, M4A, WAV, OGG, FLAC, WebM &middot; Multiple files at once
         </p>
         {files.length > 0 && (
-          <p className="text-indigo-400 text-sm mt-3 font-medium">
+          <p className="text-espresso-700 text-sm mt-3 font-medium">
             {files.length} file(s) ready &mdash; drop more to add
           </p>
         )}
@@ -469,9 +469,9 @@ export default function LecturePipelinePage() {
       {drivePanelOpen && (
         <SlideOver title="Import from Google Drive" onClose={() => setDrivePanelOpen(false)}>
           <div className="space-y-3">
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-stone-500">
               Paste a public Google Drive folder link, browse its audio files, then choose what to import.
-              Requires <code className="text-slate-400">GOOGLE_DRIVE_API_KEY</code> in your env.
+              Requires <code className="text-stone-600">GOOGLE_DRIVE_API_KEY</code> in your env.
             </p>
 
             {!driveListing && (
@@ -483,7 +483,7 @@ export default function LecturePipelinePage() {
                   onKeyDown={(e) => e.key === "Enter" && handleDriveBrowse()}
                   placeholder="https://drive.google.com/drive/folders/…"
                   disabled={driveBrowsing || isWorking}
-                  className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500"
+                  className="flex-1 bg-stone-200 border border-stone-300 rounded-lg px-3 py-2 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-espresso-500"
                 />
                 <button
                   onClick={handleDriveBrowse}
@@ -504,24 +504,24 @@ export default function LecturePipelinePage() {
                 <div className="flex items-center justify-between">
                   <button
                     onClick={toggleAllDriveFiles}
-                    className="text-xs text-indigo-400 hover:text-indigo-300"
+                    className="text-xs text-espresso-700 hover:text-espresso-800"
                   >
                     {driveSelected.size === driveListing.files.filter((f) => f.supported && !f.alreadyImported).length
                       ? "Deselect all"
                       : "Select all"}
                   </button>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-stone-500">
                     {driveSelected.size} of {driveListing.files.filter((f) => f.supported && !f.alreadyImported).length} selected
                   </span>
                 </div>
 
-                <ul className="divide-y divide-slate-800 rounded-lg border border-slate-700 overflow-hidden max-h-64 overflow-y-auto">
+                <ul className="divide-y divide-stone-200 rounded-lg border border-stone-300 overflow-hidden max-h-64 overflow-y-auto">
                   {driveListing.files.map((f) => {
                     const disabled = !f.supported || f.alreadyImported;
                     return (
                       <li
                         key={f.id}
-                        className={`flex items-center gap-3 px-3 py-2.5 text-sm ${disabled ? "opacity-40" : "hover:bg-slate-800/60 cursor-pointer"}`}
+                        className={`flex items-center gap-3 px-3 py-2.5 text-sm ${disabled ? "opacity-40" : "hover:bg-stone-200/60 cursor-pointer"}`}
                         onClick={() => !disabled && toggleDriveFile(f.id)}
                       >
                         <input
@@ -530,12 +530,12 @@ export default function LecturePipelinePage() {
                           disabled={disabled}
                           onChange={() => toggleDriveFile(f.id)}
                           onClick={(e) => e.stopPropagation()}
-                          className="accent-indigo-500 h-4 w-4 shrink-0"
+                          className="accent-espresso-500 h-4 w-4 shrink-0"
                         />
-                        <span className="flex-1 truncate text-slate-200">{f.name}</span>
-                        <span className="text-xs text-slate-500 shrink-0">{formatBytes(f.size)}</span>
-                        {f.alreadyImported && <span className="text-xs text-slate-600 shrink-0">already imported</span>}
-                        {!f.supported && <span className="text-xs text-slate-600 shrink-0">unsupported</span>}
+                        <span className="flex-1 truncate text-stone-800">{f.name}</span>
+                        <span className="text-xs text-stone-500 shrink-0">{formatBytes(f.size)}</span>
+                        {f.alreadyImported && <span className="text-xs text-stone-400 shrink-0">already imported</span>}
+                        {!f.supported && <span className="text-xs text-stone-400 shrink-0">unsupported</span>}
                       </li>
                     );
                   })}
@@ -581,7 +581,7 @@ export default function LecturePipelinePage() {
         <div className={`rounded-xl p-4 text-sm border ${
           phase === "complete"
             ? "bg-green-950/50 border-green-800 text-green-300"
-            : "bg-indigo-950/50 border-indigo-800 text-indigo-300"
+            : "bg-espresso-50 border-espresso-200 text-espresso-700"
         }`}>
           {phase === "transcribing" && (
             <div className="mb-2">
@@ -589,9 +589,9 @@ export default function LecturePipelinePage() {
                 <span>Transcription progress</span>
                 <span>{transcribeProgress.done}/{transcribeProgress.total}</span>
               </div>
-              <div className="w-full bg-slate-800 rounded-full h-1.5">
+              <div className="w-full bg-stone-200 rounded-full h-1.5">
                 <div
-                  className="bg-indigo-500 h-1.5 rounded-full transition-all"
+                  className="bg-espresso-500 h-1.5 rounded-full transition-all"
                   style={{
                     width: transcribeProgress.total > 0
                       ? `${(transcribeProgress.done / transcribeProgress.total) * 100}%`
@@ -610,11 +610,11 @@ export default function LecturePipelinePage() {
           <div className="flex items-center justify-between">
             <h2 className="section-title">
               Voice Notes
-              <span className="ml-2 text-sm font-normal text-slate-500">
+              <span className="ml-2 text-sm font-normal text-stone-500">
                 ({files.length} file{files.length !== 1 ? "s" : ""})
               </span>
             </h2>
-            <div className="flex gap-3 text-xs text-slate-500">
+            <div className="flex gap-3 text-xs text-stone-500">
               {transcribedCount > 0 && (
                 <span className="text-green-400">{transcribedCount} transcribed</span>
               )}
@@ -630,13 +630,13 @@ export default function LecturePipelinePage() {
               return (
                 <div
                   key={f.id}
-                  className="bg-slate-900/50 rounded-lg px-4 py-3 text-sm"
+                  className="bg-stone-100/50 rounded-lg px-4 py-3 text-sm"
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-lg flex-shrink-0">🎵</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-slate-200 font-medium truncate">{f.name}</p>
-                      <p className="text-slate-500 text-xs mt-0.5">
+                      <p className="text-stone-800 font-medium truncate">{f.name}</p>
+                      <p className="text-stone-500 text-xs mt-0.5">
                         {formatBytes(f.size)} &middot; Recorded: {formatDate(f.recordedAt)}
                       </p>
                       {f.errorMessage && (
@@ -648,14 +648,14 @@ export default function LecturePipelinePage() {
                         <>
                           <button
                             onClick={() => copyTranscript(f.id, f.transcript!)}
-                            className="text-xs text-slate-400 hover:text-slate-200 transition-colors px-2 py-0.5 rounded border border-slate-700 hover:border-slate-500"
+                            className="text-xs text-stone-600 hover:text-stone-800 transition-colors px-2 py-0.5 rounded border border-stone-300 hover:border-stone-500"
                             title="Copy transcript to clipboard"
                           >
                             {copiedTranscriptId === f.id ? "✓ copied" : "copy"}
                           </button>
                           <button
                             onClick={() => toggleTranscript(f.id)}
-                            className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                            className="text-xs text-espresso-700 hover:text-espresso-800 transition-colors"
                           >
                             {isExpanded ? "hide" : "show"} transcript
                           </button>
@@ -666,19 +666,19 @@ export default function LecturePipelinePage() {
                   </div>
 
                   {f.status === "transcribing" && (
-                    <p className="mt-2 text-xs text-slate-500 animate-pulse pl-8">
+                    <p className="mt-2 text-xs text-stone-500 animate-pulse pl-8">
                       Transcribing…
                     </p>
                   )}
                   {f.transcript && isExpanded && (
                     <div className="mt-3 pl-8">
-                      <div className="bg-slate-800/60 rounded-lg p-3 text-xs text-slate-300 leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto border border-slate-700">
+                      <div className="bg-stone-200/60 rounded-lg p-3 text-xs text-stone-700 leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto border border-stone-300">
                         {f.transcript}
                       </div>
                     </div>
                   )}
                   {f.transcript && !isExpanded && (
-                    <p className="mt-2 pl-8 text-xs text-slate-500 line-clamp-2">
+                    <p className="mt-2 pl-8 text-xs text-stone-500 line-clamp-2">
                       {f.transcript}
                     </p>
                   )}
@@ -687,7 +687,7 @@ export default function LecturePipelinePage() {
             })}
           </div>
 
-          <div className="flex flex-wrap gap-3 pt-2 border-t border-slate-700">
+          <div className="flex flex-wrap gap-3 pt-2 border-t border-stone-300">
             {uploadedCount > 0 && (
               <button
                 onClick={handleTranscribe}
@@ -696,7 +696,7 @@ export default function LecturePipelinePage() {
               >
                 <span>⚡</span>
                 Transcribe {uploadedCount} File{uploadedCount !== 1 ? "s" : ""}
-                <span className="text-indigo-300 text-xs">
+                <span className="text-espresso-200 text-xs">
                   ({sttProvider === "deepgram" ? "Deepgram" : "Gemini"})
                 </span>
               </button>
@@ -741,8 +741,8 @@ export default function LecturePipelinePage() {
           ].map((card, i) => (
             <div key={i} className="card text-center space-y-3">
               <div className="text-4xl">{card.icon}</div>
-              <h3 className="font-semibold text-slate-200">{card.title}</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">{card.desc}</p>
+              <h3 className="font-semibold text-stone-800">{card.title}</h3>
+              <p className="text-stone-600 text-sm leading-relaxed">{card.desc}</p>
             </div>
           ))}
         </div>

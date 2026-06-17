@@ -1,8 +1,8 @@
-# Agent Instructions For Crammer
+# Agent Instructions For StudyForge
 
 ## Mission
 
-Help maintain and extend Crammer, a Next.js 14 app that converts lecture recordings into transcriptions, grouped lectures, and AI-generated podcast scripts.
+Help maintain and extend StudyForge, a Next.js 14 app that converts lecture recordings into transcriptions, grouped lectures, and AI-generated podcast scripts.
 
 Before editing, read the relevant files and preserve the current architecture unless the task clearly calls for a larger change.
 
@@ -21,7 +21,7 @@ Use `npm run build` as the main verification for app-wide changes. Use `npm run 
 
 ## Project Context
 
-Crammer's user flow:
+StudyForge's user flow:
 
 1. Users upload local audio/video files or import public Google Drive folder audio.
 2. Files are stored under `/tmp/crammer-uploads`.

@@ -83,7 +83,7 @@ export default function LibraryPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-64 text-slate-500">
+      <div className="flex items-center justify-center min-h-64 text-stone-500">
         <div className="text-center space-y-3">
           <div className="text-4xl animate-spin-slow">⚙️</div>
           <p>Loading your outputs…</p>
@@ -132,8 +132,8 @@ export default function LibraryPage() {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16 text-center space-y-6">
         <div className="text-6xl">📭</div>
-        <h2 className="text-2xl font-semibold text-slate-200">Nothing here yet</h2>
-        <p className="text-slate-400 max-w-sm mx-auto">
+        <h2 className="text-2xl font-semibold text-stone-800">Nothing here yet</h2>
+        <p className="text-stone-600 max-w-sm mx-auto">
           Use one of the tools to generate a lecture, a study material, or a study audio clip —
           it'll show up here.
         </p>
@@ -156,8 +156,8 @@ export default function LibraryPage() {
     <div className="max-w-5xl mx-auto px-4 py-10 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-100">My Outputs</h1>
-          <p className="text-slate-400 mt-1">
+          <h1 className="text-3xl font-bold text-stone-900">My Outputs</h1>
+          <p className="text-stone-600 mt-1">
             {items.length} item{items.length !== 1 ? "s" : ""} generated across all tools
           </p>
         </div>
@@ -166,15 +166,15 @@ export default function LibraryPage() {
         </Link>
       </div>
 
-      <div className="flex gap-1 rounded-lg border border-slate-800 bg-slate-900/70 p-1 text-sm w-fit">
+      <div className="flex gap-1 rounded-lg border border-stone-200 bg-stone-100/70 p-1 text-sm w-fit">
         {(["all", "lecture", "study", "audio"] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
             className={`rounded-md px-3 py-1.5 transition-colors capitalize ${
               filter === f
-                ? "bg-slate-800 text-slate-100"
-                : "text-slate-500 hover:text-slate-300"
+                ? "bg-stone-200 text-stone-900"
+                : "text-stone-500 hover:text-stone-700"
             }`}
           >
             {f === "all" ? "All" : `${TYPE_LABEL[f]}s`}
@@ -188,12 +188,12 @@ export default function LibraryPage() {
             <div className="subtle-panel space-y-2">
               <div className="flex items-start justify-between gap-3">
                 <span className={TYPE_BADGE[item.type]}>{TYPE_LABEL[item.type]}</span>
-                <span className="text-slate-500 text-xs shrink-0">{formatDate(item.date)}</span>
+                <span className="text-stone-500 text-xs shrink-0">{formatDate(item.date)}</span>
               </div>
-              <h2 className="text-base font-semibold text-slate-100 leading-snug truncate">
+              <h2 className="text-base font-semibold text-stone-900 leading-snug truncate">
                 {item.title}
               </h2>
-              <p className="text-slate-400 text-sm leading-relaxed line-clamp-2">{item.subtitle}</p>
+              <p className="text-stone-600 text-sm leading-relaxed line-clamp-2">{item.subtitle}</p>
             </div>
           );
 
@@ -220,7 +220,7 @@ export default function LibraryPage() {
       {openMaterial && (
         <SlideOver title={openMaterial.title} onClose={() => setOpenMaterial(null)}>
           <div className="space-y-4">
-            <p className="text-slate-400 text-sm">{openMaterial.description}</p>
+            <p className="text-stone-600 text-sm">{openMaterial.description}</p>
             <div className="flex gap-2">
               <button onClick={() => copyMaterial(openMaterial)} className="btn-secondary text-xs py-1.5 px-3">
                 {copied ? "✅ Copied" : "📋 Copy"}
@@ -249,7 +249,7 @@ export default function LibraryPage() {
       {openAudio && (
         <SlideOver title={openAudio.title} onClose={() => setOpenAudio(null)}>
           <div className="space-y-4">
-            <p className="text-slate-500 text-xs">{openAudio.sourceName}</p>
+            <p className="text-stone-500 text-xs">{openAudio.sourceName}</p>
             {openAudio.audioUrl ? (
               <audio controls src={openAudio.audioUrl} className="w-full" />
             ) : (
@@ -257,7 +257,7 @@ export default function LibraryPage() {
                 Audio was not generated for this script.
               </div>
             )}
-            <div className="bg-slate-800/60 rounded-lg p-3 text-xs text-slate-300 leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto border border-slate-700">
+            <div className="bg-stone-200/60 rounded-lg p-3 text-xs text-stone-700 leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto border border-stone-300">
               {openAudio.script}
             </div>
           </div>

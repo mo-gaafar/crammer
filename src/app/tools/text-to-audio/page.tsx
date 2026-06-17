@@ -225,8 +225,8 @@ export default function TextToAudioPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-10 space-y-6">
       <div className="text-center space-y-3">
-        <h1 className="text-3xl font-bold text-slate-100">Text → Audio</h1>
-        <p className="text-slate-400 max-w-xl mx-auto">
+        <h1 className="text-3xl font-bold text-stone-900">Text → Audio</h1>
+        <p className="text-stone-600 max-w-xl mx-auto">
           Paste notes for a rewritten study script, or paste a finished script and send it
           straight to audio.
         </p>
@@ -300,7 +300,7 @@ export default function TextToAudioPage() {
           >
             {savingDirectScript ? "Preparing script..." : "Use Text as Script"}
           </button>
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-stone-500">
             Use Text as Script skips Gemini rewriting and sends the pasted script to TTS.
           </span>
           {textAudioArtifacts.length > 0 && (
@@ -317,7 +317,7 @@ export default function TextToAudioPage() {
         </div>
 
         {activeTextAudio && (
-          <div className="bg-slate-900/50 rounded-xl p-4 space-y-3 border border-slate-800">
+          <div className="bg-stone-100/50 rounded-xl p-4 space-y-3 border border-stone-200">
             {(() => {
               const ttsCost =
                 activeTextAudio.ttsCostEstimate ?? estimateTtsCost(activeTextAudio.script);
@@ -325,12 +325,12 @@ export default function TextToAudioPage() {
                 <>
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <h3 className="font-semibold text-slate-100 truncate">{activeTextAudio.title}</h3>
-                      <p className="text-xs text-slate-500 truncate">
+                      <h3 className="font-semibold text-stone-900 truncate">{activeTextAudio.title}</h3>
+                      <p className="text-xs text-stone-500 truncate">
                         {activeTextAudio.sourceName}
                         {activeTextAudio.audioFileName ? ` -> ${activeTextAudio.audioFileName}` : ""}
                       </p>
-                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-stone-500">
                         <span>{ttsCost.wordCount.toLocaleString()} words</span>
                         <span>{ttsCost.characterCount.toLocaleString()} chars</span>
                         <span>~{ttsCost.estimatedAudioMinutes.toFixed(1)} min audio</span>
@@ -368,19 +368,19 @@ export default function TextToAudioPage() {
                           key={provider}
                           className={`rounded-lg border px-3 py-2 ${
                             isSelected
-                              ? "border-indigo-700 bg-indigo-950/30"
-                              : "border-slate-700 bg-slate-950/40"
+                              ? "border-espresso-700 bg-espresso-50"
+                              : "border-stone-300 bg-stone-50/40"
                           }`}
                           title={estimate.billingBasis}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-slate-400 capitalize">{provider} TTS</span>
-                            {isSelected && <span className="text-indigo-300">selected</span>}
+                            <span className="text-stone-600 capitalize">{provider} TTS</span>
+                            {isSelected && <span className="text-espresso-700">selected</span>}
                           </div>
-                          <div className="text-slate-100 font-semibold">
+                          <div className="text-stone-900 font-semibold">
                             {formatUsd(estimate.estimatedUsd)}
                           </div>
-                          <div className="text-slate-500">{estimate.model}</div>
+                          <div className="text-stone-500">{estimate.model}</div>
                         </div>
                       );
                     })}
@@ -389,8 +389,8 @@ export default function TextToAudioPage() {
               );
             })()}
             {activeAudioIsGenerating && (
-              <div className="rounded-lg border border-indigo-800 bg-indigo-950/40 p-3">
-                <div className="mb-1 flex justify-between text-xs text-indigo-200">
+              <div className="rounded-lg border border-espresso-200 bg-espresso-50 p-3">
+                <div className="mb-1 flex justify-between text-xs text-espresso-800">
                   <span>
                     {activeTextAudio.audioStatus === "queued"
                       ? "Waiting in TTS queue"
@@ -401,9 +401,9 @@ export default function TextToAudioPage() {
                     {activeTextAudio.audioChunksTotal ? `/${activeTextAudio.audioChunksTotal}` : ""}
                   </span>
                 </div>
-                <div className="h-1.5 w-full rounded-full bg-slate-800">
+                <div className="h-1.5 w-full rounded-full bg-stone-200">
                   <div
-                    className="h-1.5 rounded-full bg-indigo-500 transition-all"
+                    className="h-1.5 rounded-full bg-espresso-500 transition-all"
                     style={{
                       width: activeTextAudio.audioChunksTotal
                         ? `${((activeTextAudio.audioChunksDone ?? 0) / activeTextAudio.audioChunksTotal) * 100}%`
@@ -425,7 +425,7 @@ export default function TextToAudioPage() {
                 Audio is not available for this script yet.
               </div>
             )}
-            <div className="bg-slate-800/60 rounded-lg p-3 text-xs text-slate-300 leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto border border-slate-700">
+            <div className="bg-stone-200/60 rounded-lg p-3 text-xs text-stone-700 leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto border border-stone-300">
               {activeTextAudio.script}
             </div>
           </div>
@@ -433,15 +433,15 @@ export default function TextToAudioPage() {
 
         {textAudioArtifacts.length > 1 && (
           <div className="flex gap-2 flex-wrap">
-            <span className="text-xs text-slate-500 self-center">Generated:</span>
+            <span className="text-xs text-stone-500 self-center">Generated:</span>
             {textAudioArtifacts.map((artifact) => (
               <button
                 key={artifact.id}
                 onClick={() => setActiveTextAudio(artifact)}
                 className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
                   activeTextAudio?.id === artifact.id
-                    ? "border-indigo-500 text-indigo-300 bg-indigo-500/10"
-                    : "border-slate-700 text-slate-400 hover:border-slate-500"
+                    ? "border-espresso-500 text-espresso-700 bg-espresso-500/10"
+                    : "border-stone-300 text-stone-600 hover:border-stone-500"
                 }`}
               >
                 {artifact.sourceName}

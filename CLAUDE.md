@@ -1,8 +1,8 @@
-# Crammer Project Guide
+# StudyForge Project Guide
 
 ## Project Summary
 
-Crammer is a Next.js 14 App Router application for turning lecture voice notes into study material.
+StudyForge is a Next.js 14 App Router application for turning lecture voice notes into study material.
 
 Claude-specific project assets live in `.claude/`, including slash-command prompts, local skills, and a post-edit static-analysis hook. Shared agent assets live in `.agents/`.
 

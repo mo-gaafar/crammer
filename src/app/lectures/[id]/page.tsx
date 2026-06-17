@@ -274,7 +274,7 @@ export default function LectureDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-64 text-slate-500">
+      <div className="flex items-center justify-center min-h-64 text-stone-500">
         <div className="text-center space-y-3">
           <div className="text-4xl animate-spin-slow">⚙️</div>
           <p>Loading lecture…</p>
@@ -299,16 +299,16 @@ export default function LectureDetailPage() {
   const { lecture, audioFiles } = data;
 
   const TAB_ACCENTS: Record<Tab, string> = {
-    transcript: "border-slate-500",
+    transcript: "border-stone-500",
     materials: "border-emerald-500",
-    podcast: "border-indigo-500",
+    podcast: "border-espresso-500",
   };
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-10">
       <button
         onClick={() => router.push("/lectures")}
-        className="text-sm text-slate-500 hover:text-slate-300 transition-colors mb-6 flex items-center gap-1"
+        className="text-sm text-stone-500 hover:text-stone-700 transition-colors mb-6 flex items-center gap-1"
       >
         ← All Lectures
       </button>
@@ -317,24 +317,24 @@ export default function LectureDetailPage() {
         {/* Metadata rail */}
         <aside className="space-y-5 lg:sticky lg:top-20 lg:self-start">
           <div className="flex items-start gap-3">
-            <div className="shrink-0 w-10 h-10 rounded-lg bg-indigo-600/20 border border-indigo-600/30 flex items-center justify-center">
-              <span className="text-indigo-400 font-bold text-sm">{lecture.lectureNumber}</span>
+            <div className="shrink-0 w-10 h-10 rounded-lg bg-espresso-600/20 border border-espresso-600/30 flex items-center justify-center">
+              <span className="text-espresso-700 font-bold text-sm">{lecture.lectureNumber}</span>
             </div>
             <div className="min-w-0">
-              <h1 className="text-xl font-bold text-slate-100 leading-snug">{lecture.title}</h1>
-              <p className="text-slate-500 mt-1 text-xs">{formatDate(lecture.createdAt)}</p>
+              <h1 className="text-xl font-bold text-stone-900 leading-snug">{lecture.title}</h1>
+              <p className="text-stone-500 mt-1 text-xs">{formatDate(lecture.createdAt)}</p>
             </div>
           </div>
 
           <div className="subtle-panel space-y-2 p-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-stone-500">
               Summary
             </h2>
-            <p className="text-slate-300 text-sm leading-relaxed">{lecture.summary}</p>
+            <p className="text-stone-700 text-sm leading-relaxed">{lecture.summary}</p>
           </div>
 
           <div className="space-y-2">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-stone-500">
               Key Topics
             </h2>
             <div className="flex flex-wrap gap-1.5">
@@ -347,18 +347,18 @@ export default function LectureDetailPage() {
           </div>
 
           <div className="space-y-2">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-stone-500">
               Source Recordings
-              <span className="ml-1 font-normal text-slate-600">({audioFiles.length})</span>
+              <span className="ml-1 font-normal text-stone-400">({audioFiles.length})</span>
             </h2>
             <div className="space-y-1.5">
               {audioFiles.map((f) => (
-                <div key={f.id} className="flex items-center gap-2 text-xs text-slate-400">
+                <div key={f.id} className="flex items-center gap-2 text-xs text-stone-600">
                   <span className="status-dot bg-green-400" />
                   <span className="truncate flex-1" title={f.originalName}>
                     {f.originalName}
                   </span>
-                  <span className="shrink-0 text-slate-600">{formatBytes(f.size)}</span>
+                  <span className="shrink-0 text-stone-400">{formatBytes(f.size)}</span>
                 </div>
               ))}
             </div>
@@ -367,15 +367,15 @@ export default function LectureDetailPage() {
 
         {/* Main content */}
         <div className="min-w-0 space-y-6">
-          <div className="flex gap-1 rounded-lg border border-slate-800 bg-slate-900/50 p-1">
+          <div className="flex gap-1 rounded-lg border border-stone-200 bg-stone-100/50 p-1">
             {(["transcript", "materials", "podcast"] as Tab[]).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
                 className={`flex-1 rounded-md px-3 py-2 text-sm font-medium capitalize transition-colors ${
                   tab === t
-                    ? "bg-slate-800 text-slate-100"
-                    : "text-slate-500 hover:text-slate-300"
+                    ? "bg-stone-200 text-stone-900"
+                    : "text-stone-500 hover:text-stone-700"
                 }`}
               >
                 {t === "transcript"
@@ -393,7 +393,7 @@ export default function LectureDetailPage() {
             <div className="flex items-center justify-between">
               <h2 className="section-title">Full Transcript</h2>
               <div className="flex items-center gap-3">
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-stone-500">
                   {transcriptWordCount} words
                 </span>
                 <button
@@ -414,7 +414,7 @@ export default function LectureDetailPage() {
             <div className={`card space-y-4 border-l-2 ${TAB_ACCENTS.materials}`}>
               <div>
                 <h2 className="section-title">Generate Study Material</h2>
-                <p className="text-slate-400 text-sm mt-1">
+                <p className="text-stone-600 text-sm mt-1">
                   Choose a reusable template flow. Community templates live beside built-in ones
                   so contributors can add new study outputs cleanly.
                 </p>
@@ -428,12 +428,12 @@ export default function LectureDetailPage() {
                     disabled={generatingMaterial}
                     className={`text-left p-4 rounded-xl border-2 transition-all ${
                       selectedTemplateId === template.id
-                        ? "border-indigo-500 bg-indigo-500/10"
-                        : "border-slate-700 bg-slate-900/50 hover:border-slate-600"
+                        ? "border-espresso-500 bg-espresso-500/10"
+                        : "border-stone-300 bg-stone-100/50 hover:border-stone-400"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <div className="font-medium text-slate-200 text-sm">{template.name}</div>
+                      <div className="font-medium text-stone-800 text-sm">{template.name}</div>
                       <span
                         className={
                           template.source === "community" ? "badge-green" : "badge-indigo"
@@ -442,10 +442,10 @@ export default function LectureDetailPage() {
                         {template.source}
                       </span>
                     </div>
-                    <div className="text-slate-500 text-xs mt-2 leading-relaxed">
+                    <div className="text-stone-500 text-xs mt-2 leading-relaxed">
                       {template.description}
                     </div>
-                    <div className="text-slate-400 text-xs mt-3 uppercase">
+                    <div className="text-stone-600 text-xs mt-3 uppercase">
                       {template.type.replace(/_/g, " ")}
                     </div>
                   </button>
@@ -479,7 +479,7 @@ export default function LectureDetailPage() {
 
             {materials.length > 1 && (
               <div className="flex gap-2 flex-wrap">
-                <span className="text-xs text-slate-500 self-center">Generated:</span>
+                <span className="text-xs text-stone-500 self-center">Generated:</span>
                 {materials.map((material) => {
                   const template = templates.find((t) => t.id === material.templateId);
                   return (
@@ -488,8 +488,8 @@ export default function LectureDetailPage() {
                       onClick={() => setActiveMaterial(material)}
                       className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
                         activeMaterial?.id === material.id
-                          ? "border-indigo-500 text-indigo-300 bg-indigo-500/10"
-                          : "border-slate-700 text-slate-400 hover:border-slate-500"
+                          ? "border-espresso-500 text-espresso-700 bg-espresso-500/10"
+                          : "border-stone-300 text-stone-600 hover:border-stone-500"
                       }`}
                     >
                       {template?.name ?? material.type.replace(/_/g, " ")}
@@ -503,15 +503,15 @@ export default function LectureDetailPage() {
               <div className="card space-y-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h3 className="font-bold text-slate-100 text-lg leading-snug">
+                    <h3 className="font-bold text-stone-900 text-lg leading-snug">
                       {activeMaterial.title}
                     </h3>
-                    <p className="text-slate-400 text-sm mt-1">{activeMaterial.description}</p>
+                    <p className="text-stone-600 text-sm mt-1">{activeMaterial.description}</p>
                     <div className="flex items-center gap-3 mt-2">
                       <span className="badge-indigo">
                         {activeMaterial.type.replace(/_/g, " ")}
                       </span>
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-stone-500">
                         {activeMaterialWordCount} words
                       </span>
                     </div>
@@ -539,17 +539,17 @@ export default function LectureDetailPage() {
             {generatingMaterial && (
               <div className="card flex items-center justify-center py-16 space-y-4 flex-col text-center">
                 <div className="text-5xl animate-pulse-slow">✨</div>
-                <p className="text-slate-300 font-medium">
+                <p className="text-stone-700 font-medium">
                   Gemini is shaping this lecture into a study material...
                 </p>
-                <p className="text-slate-500 text-sm">
+                <p className="text-stone-500 text-sm">
                   Longer transcripts can take about a minute.
                 </p>
               </div>
             )}
 
             {materials.length === 0 && !generatingMaterial && (
-              <div className="card text-center py-12 space-y-3 text-slate-500">
+              <div className="card text-center py-12 space-y-3 text-stone-500">
                 <div className="text-4xl">📚</div>
                 <p>No study materials generated yet. Choose a template and hit Generate.</p>
               </div>
@@ -563,7 +563,7 @@ export default function LectureDetailPage() {
             {/* Format selector */}
             <div className={`card space-y-4 border-l-2 ${TAB_ACCENTS.podcast}`}>
               <h2 className="section-title">Generate Podcast Script</h2>
-              <p className="text-slate-400 text-sm">
+              <p className="text-stone-600 text-sm">
                 Choose a format and let Gemini write a ready-to-record podcast episode based on
                 this lecture.
               </p>
@@ -576,13 +576,13 @@ export default function LectureDetailPage() {
                     disabled={generating}
                     className={`text-left p-4 rounded-xl border-2 transition-all ${
                       selectedFormat === opt.value
-                        ? "border-indigo-500 bg-indigo-500/10"
-                        : "border-slate-700 bg-slate-900/50 hover:border-slate-600"
+                        ? "border-espresso-500 bg-espresso-500/10"
+                        : "border-stone-300 bg-stone-100/50 hover:border-stone-400"
                     }`}
                   >
                     <div className="text-2xl mb-2">{opt.icon}</div>
-                    <div className="font-medium text-slate-200 text-sm">{opt.label}</div>
-                    <div className="text-slate-500 text-xs mt-1 leading-relaxed">{opt.desc}</div>
+                    <div className="font-medium text-stone-800 text-sm">{opt.label}</div>
+                    <div className="text-stone-500 text-xs mt-1 leading-relaxed">{opt.desc}</div>
                   </button>
                 ))}
               </div>
@@ -616,15 +616,15 @@ export default function LectureDetailPage() {
             {/* Previous scripts */}
             {scripts.length > 1 && (
               <div className="flex gap-2 flex-wrap">
-                <span className="text-xs text-slate-500 self-center">Previous:</span>
+                <span className="text-xs text-stone-500 self-center">Previous:</span>
                 {scripts.map((s) => (
                   <button
                     key={s.id}
                     onClick={() => setActiveScript(s)}
                     className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
                       activeScript?.id === s.id
-                        ? "border-indigo-500 text-indigo-300 bg-indigo-500/10"
-                        : "border-slate-700 text-slate-400 hover:border-slate-500"
+                        ? "border-espresso-500 text-espresso-700 bg-espresso-500/10"
+                        : "border-stone-300 text-stone-600 hover:border-stone-500"
                     }`}
                   >
                     {FORMAT_OPTIONS.find((o) => o.value === s.format)?.icon}{" "}
@@ -639,19 +639,19 @@ export default function LectureDetailPage() {
               <div className="card space-y-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h3 className="font-bold text-slate-100 text-lg leading-snug">
+                    <h3 className="font-bold text-stone-900 text-lg leading-snug">
                       {activeScript.title}
                     </h3>
-                    <p className="text-slate-400 text-sm mt-1">{activeScript.description}</p>
+                    <p className="text-stone-600 text-sm mt-1">{activeScript.description}</p>
                     <div className="flex items-center gap-3 mt-2">
                       <span className="badge-indigo">
                         {FORMAT_OPTIONS.find((o) => o.value === activeScript.format)?.label}
                       </span>
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-stone-500">
                         {activeScriptWordCount} words
                       </span>
                       {activeScriptTtsCost && (
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-stone-500">
                           ~{activeScriptTtsCost.estimatedAudioMinutes.toFixed(1)} min audio
                         </span>
                       )}
@@ -663,14 +663,14 @@ export default function LectureDetailPage() {
                           return (
                             <div
                               key={provider}
-                              className="rounded-lg border border-slate-700 bg-slate-900/50 px-3 py-2"
+                              className="rounded-lg border border-stone-300 bg-stone-100/50 px-3 py-2"
                               title={estimate.billingBasis}
                             >
-                              <div className="text-slate-400 capitalize">{provider} TTS</div>
-                              <div className="text-slate-200 font-semibold">
+                              <div className="text-stone-600 capitalize">{provider} TTS</div>
+                              <div className="text-stone-800 font-semibold">
                                 {formatUsd(estimate.estimatedUsd)}
                               </div>
-                              <div className="text-slate-500">{estimate.model}</div>
+                              <div className="text-stone-500">{estimate.model}</div>
                             </div>
                           );
                         })}
@@ -694,13 +694,13 @@ export default function LectureDetailPage() {
             {generating && (
               <div className="card flex items-center justify-center py-16 space-y-4 flex-col text-center">
                 <div className="text-5xl animate-pulse-slow">✨</div>
-                <p className="text-slate-300 font-medium">Gemini is crafting your podcast script…</p>
-                <p className="text-slate-500 text-sm">This typically takes 30-60 seconds for a full episode.</p>
+                <p className="text-stone-700 font-medium">Gemini is crafting your podcast script…</p>
+                <p className="text-stone-500 text-sm">This typically takes 30-60 seconds for a full episode.</p>
               </div>
             )}
 
             {scripts.length === 0 && !generating && (
-              <div className="card text-center py-12 space-y-3 text-slate-500">
+              <div className="card text-center py-12 space-y-3 text-stone-500">
                 <div className="text-4xl">🎙️</div>
                 <p>No scripts generated yet. Choose a format above and hit Generate.</p>
               </div>

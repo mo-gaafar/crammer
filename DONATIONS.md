@@ -1,6 +1,6 @@
-# Support Crammer
+# Support StudyForge
 
-Crammer is being built as an open source education tool with a sustainable
+StudyForge is being built as an open source education tool with a sustainable
 cloud business around convenience, managed AI usage, collaboration, and scale.
 
 Donations help keep the open source core useful for students, teachers,
@@ -14,7 +14,7 @@ self-hosters, and contributors who want control over their learning tools.
 - Self-hosting docs and Docker improvements.
 - Export formats like Anki CSV, DOCX, PDF, and Markdown bundles.
 - BYOK support for Deepgram, Gemini, OpenAI, Anthropic, and future providers.
-- Crammer MCP resources and tools for agents.
+- StudyForge MCP resources and tools for agents.
 - Accessibility, mobile polish, and educator workflows.
 
 ## Support Options
@@ -41,7 +41,7 @@ briefs, computer science flashcards, or exam cram packets.
 
 ### Self-Hosting Sponsor
 
-Help make Crammer easier to run with BYOK, Docker, local storage, and clear
+Help make StudyForge easier to run with BYOK, Docker, local storage, and clear
 deployment docs.
 
 ### Classroom Sponsor
@@ -63,4 +63,4 @@ The paid cloud product should charge for convenience:
 - integrations
 - priority processing
 
-That balance is how Crammer can build both a real community and a real business.
+That balance is how StudyForge can build both a real community and a real business.

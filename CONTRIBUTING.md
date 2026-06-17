@@ -1,6 +1,6 @@
-# Contributing to Crammer
+# Contributing to StudyForge
 
-Welcome. Crammer is an open source education project for turning lectures,
+Welcome. StudyForge is an open source education project for turning lectures,
 recordings, and transcripts into study materials people can actually use:
 study guides, flashcards, quizzes, concept maps, printable question banks,
 review podcasts, and course packs.
@@ -40,7 +40,7 @@ Useful code areas:
 
 ### Study Templates
 
-Templates are the heart of Crammer. A good template is specific, repeatable,
+Templates are the heart of StudyForge. A good template is specific, repeatable,
 and produces a study artifact someone would keep.
 
 Examples:
@@ -60,7 +60,7 @@ Examples:
 
 Docs should help three groups:
 
-- students who want to use Crammer
+- students who want to use StudyForge
 - self-hosters who want BYOK and control
 - contributors who want a clear next task
 
@@ -124,7 +124,7 @@ This keeps the project coherent as it grows.
 
 ## Community Tone
 
-Be direct, generous, and practical. Crammer is for learning; the project should
+Be direct, generous, and practical. StudyForge is for learning; the project should
 feel like that too.
 
 Assume good intent, explain tradeoffs, and help newcomers find a useful first
