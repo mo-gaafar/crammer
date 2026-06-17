@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { GEMINI_MODELS, DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
 import { estimateTtsCost, formatUsd } from "@/lib/tts-cost";
+import { useSettings, type TtsProvider } from "@/lib/use-settings";
 import type { TtsCostEstimate } from "@/types";
 
 interface FileEntry {
@@ -32,9 +32,6 @@ interface TextAudioArtifact {
 }
 
 type Phase = "idle" | "uploading" | "transcribing" | "processing" | "complete" | "error";
-type SttProvider = "deepgram" | "gemini";
-type TtsProvider = "gemini" | "deepgram";
-type ToolTab = "recordings" | "textAudio" | "drive";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -56,12 +53,54 @@ function formatDate(iso: string): string {
 
 function StatusBadge({ status }: { status: FileEntry["status"] }) {
   const map: Record<FileEntry["status"], string> = {
-    uploaded: "badge-slate",
-    transcribing: "badge-yellow animate-pulse",
-    transcribed: "badge-green",
-    error: "badge-red",
+    uploaded: "bg-slate-500",
+    transcribing: "bg-yellow-400 animate-pulse",
+    transcribed: "bg-green-400",
+    error: "bg-red-400",
   };
-  return <span className={`badge ${map[status]}`}>{status}</span>;
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs text-slate-400">
+      <span className={`status-dot ${map[status]}`} />
+      {status}
+    </span>
+  );
+}
+
+function SlideOver({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  useEffect(() => {
+    function onEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onEscape);
+    return () => document.removeEventListener("keydown", onEscape);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-40 flex justify-end">
+      <div className="absolute inset-0 bg-slate-950/70" onClick={onClose} />
+      <div className="popover relative h-full w-full max-w-lg overflow-y-auto rounded-none border-l p-6 sm:p-8">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="section-title text-base">{title}</h2>
+          <button
+            onClick={onClose}
+            className="rounded-md p-1 text-slate-500 hover:bg-slate-800 hover:text-slate-200"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
 }
 
 export default function HomePage() {
@@ -93,7 +132,8 @@ export default function HomePage() {
   const [generatingAudioId, setGeneratingAudioId] = useState<string | null>(null);
   const [queueingAllAudio, setQueueingAllAudio] = useState(false);
   const [textAudioError, setTextAudioError] = useState<string | null>(null);
-  const [activeToolTab, setActiveToolTab] = useState<ToolTab>("recordings");
+  const [drivePanelOpen, setDrivePanelOpen] = useState(false);
+  const [textAudioPanelOpen, setTextAudioPanelOpen] = useState(false);
 
   function mergeTextAudioArtifact(updated: TextAudioArtifact) {
     setTextAudioArtifacts((prev) =>
@@ -114,20 +154,12 @@ export default function HomePage() {
     return updated;
   }
 
-  // Settings
-  const [sttProvider, setSttProvider] = useState<SttProvider>("deepgram");
-  const [ttsProvider, setTtsProvider] = useState<TtsProvider>("gemini");
-  const [geminiModel, setGeminiModel] = useState(DEFAULT_GEMINI_MODEL);
+  // Provider/model settings now live in the shared navbar popover
+  const settings = useSettings();
+  const { sttProvider, ttsProvider, geminiModel } = settings;
 
-  // Restore settings and hydrate file state from server on mount
+  // Hydrate file state from server on mount
   useEffect(() => {
-    const savedProvider = localStorage.getItem("sttProvider") as SttProvider | null;
-    const savedTtsProvider = localStorage.getItem("ttsProvider") as TtsProvider | null;
-    const savedModel = localStorage.getItem("geminiModel");
-    if (savedProvider) setSttProvider(savedProvider);
-    if (savedTtsProvider) setTtsProvider(savedTtsProvider);
-    if (savedModel) setGeminiModel(savedModel);
-
     // Sync any server-side file state (survives tab close / server restart)
     fetch("/api/status")
       .then((r) => r.json())
@@ -185,21 +217,6 @@ export default function HomePage() {
 
     return () => window.clearInterval(timer);
   }, [textAudioArtifacts]);
-
-  function saveSttProvider(p: SttProvider) {
-    setSttProvider(p);
-    localStorage.setItem("sttProvider", p);
-  }
-
-  function saveTtsProvider(p: TtsProvider) {
-    setTtsProvider(p);
-    localStorage.setItem("ttsProvider", p);
-  }
-
-  function saveGeminiModel(m: string) {
-    setGeminiModel(m);
-    localStorage.setItem("geminiModel", m);
-  }
 
   function copyTranscript(id: string, text: string) {
     navigator.clipboard.writeText(text).then(() => {
@@ -634,6 +651,12 @@ export default function HomePage() {
       artifact.audioStatus !== "generating"
   ).length;
 
+  const pipelineSteps = [
+    { label: "Upload", count: files.length },
+    { label: "Transcribed", count: transcribedCount },
+    { label: "Ready to process", count: allTranscribed && transcribedCount > 0 ? 1 : 0 },
+  ];
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-10 space-y-8">
       {/* Hero */}
@@ -648,129 +671,34 @@ export default function HomePage() {
         </p>
       </div>
 
-      {/* Steps indicator */}
-      <div className="flex items-center gap-2 justify-center text-xs font-medium">
-        {[
-          { label: "1. Upload", active: phase === "idle" || phase === "uploading" },
-          { label: "2. Transcribe", active: phase === "transcribing" },
-          { label: "3. Process", active: phase === "processing" },
-          { label: "4. Study", active: phase === "complete" },
-        ].map((step, i) => (
-          <span
-            key={i}
-            className={`px-3 py-1 rounded-full transition-colors ${
-              step.active
-                ? "bg-indigo-600 text-white"
-                : "bg-slate-800 text-slate-500"
-            }`}
-          >
-            {step.label}
-          </span>
-        ))}
-      </div>
-
-      {/* Settings panel */}
-      <div className="card space-y-4">
-        <h2 className="section-title text-sm">Settings</h2>
-        <div className="flex flex-wrap gap-6">
-          {/* STT Provider */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-400">Transcription Provider</label>
-            <div className="flex gap-2">
-              {(["deepgram", "gemini"] as SttProvider[]).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => saveSttProvider(p)}
-                  disabled={isWorking}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                    sttProvider === p
-                      ? "bg-indigo-600 border-indigo-500 text-white"
-                      : "bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500"
-                  }`}
-                >
-                  {p === "deepgram" ? "Deepgram Nova-2" : "Gemini STT"}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* TTS Provider */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-400">Audio Synthesis Provider</label>
-            <div className="flex gap-2">
-              {(["gemini", "deepgram"] as TtsProvider[]).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => saveTtsProvider(p)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                    ttsProvider === p
-                      ? "bg-indigo-600 border-indigo-500 text-white"
-                      : "bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500"
-                  }`}
-                >
-                  {p === "deepgram" ? "Deepgram Aura" : "Gemini TTS"}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Gemini Model */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-400">
-              Gemini Model
-              <span className="ml-1 text-slate-600">(inference &amp; STT)</span>
-            </label>
-            <select
-              value={geminiModel}
-              onChange={(e) => saveGeminiModel(e.target.value)}
-              disabled={isWorking}
-              className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-            >
-              {GEMINI_MODELS.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        {sttProvider === "gemini" && (
-          <p className="text-xs text-amber-400/80">
-            Gemini STT uses the Files API — audio is uploaded temporarily then deleted after transcription.
-          </p>
-        )}
-      </div>
-
-      <div className="flex gap-1 rounded-xl border border-slate-800 bg-slate-900/70 p-1">
-        {[
-          { id: "recordings", label: "Recordings", detail: `${files.length} file${files.length !== 1 ? "s" : ""}` },
-          { id: "textAudio", label: "Study Audio", detail: `${textAudioArtifacts.length} script${textAudioArtifacts.length !== 1 ? "s" : ""}` },
-          { id: "drive", label: "Drive Import", detail: driveListing ? `${driveSelected.size} selected` : "folder" },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveToolTab(tab.id as ToolTab)}
-            className={`min-w-0 flex-1 rounded-lg px-3 py-2 text-left transition-colors sm:px-4 ${
-              activeToolTab === tab.id
-                ? "bg-indigo-600 text-white"
-                : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"
-            }`}
-          >
-            <span className="block truncate text-sm font-semibold">{tab.label}</span>
-            <span
-              className={`block truncate text-[11px] ${
-                activeToolTab === tab.id ? "text-indigo-100" : "text-slate-500"
-              }`}
-            >
-              {tab.detail}
+      {/* Pipeline progress */}
+      {files.length > 0 && (
+        <div className="flex items-center justify-center gap-2 text-xs font-medium text-slate-500">
+          {pipelineSteps.map((step, i) => (
+            <span key={step.label} className="flex items-center gap-2">
+              <span className={step.count > 0 ? "text-indigo-300" : "text-slate-500"}>
+                {step.label} {step.count > 0 && `· ${step.count}`}
+              </span>
+              {i < pipelineSteps.length - 1 && <span className="text-slate-700">→</span>}
             </span>
-          </button>
-        ))}
+          ))}
+        </div>
+      )}
+
+      {/* Tool launchers */}
+      <div className="flex flex-wrap justify-center gap-3">
+        <button onClick={() => setTextAudioPanelOpen(true)} className="btn-secondary text-sm">
+          Text → Audio
+          {textAudioArtifacts.length > 0 && (
+            <span className="ml-1.5 text-slate-400">({textAudioArtifacts.length})</span>
+          )}
+        </button>
+        <button onClick={() => setDrivePanelOpen(true)} className="btn-secondary text-sm">
+          Import from Drive
+        </button>
       </div>
 
       {/* Drop zone */}
-      {activeToolTab === "recordings" && (
-        <>
       <div
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
@@ -806,12 +734,11 @@ export default function HomePage() {
           </p>
         )}
       </div>
-        </>
-      )}
 
-      {/* Text to audio */}
-      {activeToolTab === "textAudio" && (
-      <div className="card space-y-4">
+      {/* Text to audio — slide-over panel */}
+      {textAudioPanelOpen && (
+      <SlideOver title="Text to Study Audio" onClose={() => setTextAudioPanelOpen(false)}>
+      <div className="space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="section-title text-sm">Text to Study Audio</h2>
@@ -1039,14 +966,13 @@ export default function HomePage() {
           </div>
         )}
       </div>
+      </SlideOver>
       )}
 
-      {/* Google Drive import */}
-      {activeToolTab === "drive" && (
-      <div className="card space-y-3">
-        <h2 className="section-title text-sm flex items-center gap-2">
-          <span>📁</span> Import from Google Drive
-        </h2>
+      {/* Google Drive import — slide-over panel */}
+      {drivePanelOpen && (
+      <SlideOver title="Import from Google Drive" onClose={() => setDrivePanelOpen(false)}>
+      <div className="space-y-3">
         <p className="text-xs text-slate-500">
           Paste a public Google Drive folder link, browse its audio files, then choose what to import.
           Requires <code className="text-slate-400">GOOGLE_DRIVE_API_KEY</code> in your env.
@@ -1148,17 +1074,18 @@ export default function HomePage() {
           <p className="text-xs text-amber-400">{driveError}</p>
         )}
       </div>
+      </SlideOver>
       )}
 
       {/* Error banner */}
-      {activeToolTab === "recordings" && error && (
+      {error && (
         <div className="bg-red-950/50 border border-red-800 rounded-xl p-4 text-red-300 text-sm">
           <strong>Error:</strong> {error}
         </div>
       )}
 
       {/* Phase message */}
-      {activeToolTab === "recordings" && phaseMessage && (
+      {phaseMessage && (
         <div className={`rounded-xl p-4 text-sm border ${
           phase === "complete"
             ? "bg-green-950/50 border-green-800 text-green-300"
@@ -1187,7 +1114,7 @@ export default function HomePage() {
       )}
 
       {/* File list */}
-      {activeToolTab === "recordings" && files.length > 0 && (
+      {files.length > 0 && (
         <div className="card space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="section-title">
@@ -1305,7 +1232,7 @@ export default function HomePage() {
       )}
 
       {/* How it works */}
-      {activeToolTab === "recordings" && files.length === 0 && (
+      {files.length === 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8">
           {[
             {

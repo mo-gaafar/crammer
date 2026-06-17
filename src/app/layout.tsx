@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import SettingsPopover from "./components/SettingsPopover";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -36,22 +37,14 @@ export default function RootLayout({
                 </span>
               </Link>
               <div className="ml-auto flex items-center gap-1 rounded-lg border border-slate-800 bg-slate-900/70 p-1 text-sm sm:ml-2">
-                <Link
-                  href="/"
-                  className="rounded-md px-2.5 py-1.5 text-slate-300 transition-colors hover:bg-slate-800 hover:text-slate-100 sm:px-3"
-                >
-                  Upload
+                <Link href="/" className="nav-link">
+                  Workspace
                 </Link>
-                <Link
-                  href="/lectures"
-                  className="rounded-md px-2.5 py-1.5 text-slate-300 transition-colors hover:bg-slate-800 hover:text-slate-100 sm:px-3"
-                >
-                  Lectures
+                <Link href="/lectures" className="nav-link">
+                  Library
                 </Link>
               </div>
-              <div className="hidden text-xs text-slate-500 md:block">
-                Powered by Deepgram + Gemini
-              </div>
+              <SettingsPopover />
             </div>
           </nav>
 

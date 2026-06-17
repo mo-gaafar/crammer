@@ -85,6 +85,26 @@
   .status-transcribing { @apply badge-yellow; }
   .status-transcribed { @apply badge-green; }
   .status-error { @apply badge-red; }
+
+  .popover {
+    @apply rounded-xl border border-slate-700 bg-slate-900 shadow-2xl shadow-black/40;
+  }
+
+  .subtle-panel {
+    @apply bg-slate-900/40 rounded-xl p-6;
+  }
+
+  .nav-link {
+    @apply rounded-md px-2.5 py-1.5 text-sm text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 sm:px-3;
+  }
+
+  .nav-link-active {
+    @apply nav-link bg-slate-800 text-slate-100;
+  }
+
+  .status-dot {
+    @apply inline-block h-1.5 w-1.5 rounded-full shrink-0;
+  }
 }
 
 /* Custom scrollbar */

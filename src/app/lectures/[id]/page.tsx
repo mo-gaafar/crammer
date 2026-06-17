@@ -298,97 +298,98 @@ export default function LectureDetailPage() {
 
   const { lecture, audioFiles } = data;
 
-  return (
-    <div className="max-w-5xl mx-auto px-4 py-10 space-y-8">
-      {/* Header */}
-      <div className="space-y-1">
-        <button
-          onClick={() => router.push("/lectures")}
-          className="text-sm text-slate-500 hover:text-slate-300 transition-colors mb-2 flex items-center gap-1"
-        >
-          ← All Lectures
-        </button>
-        <div className="flex items-start gap-4">
-          <div className="shrink-0 w-14 h-14 rounded-xl bg-indigo-600/20 border border-indigo-600/30 flex items-center justify-center">
-            <span className="text-indigo-400 font-bold text-xl">{lecture.lectureNumber}</span>
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-slate-100 leading-snug">{lecture.title}</h1>
-            <p className="text-slate-400 mt-1 text-sm">{formatDate(lecture.createdAt)}</p>
-          </div>
-        </div>
-      </div>
+  const TAB_ACCENTS: Record<Tab, string> = {
+    transcript: "border-slate-500",
+    materials: "border-emerald-500",
+    podcast: "border-indigo-500",
+  };
 
-      {/* Summary + Topics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="md:col-span-2 card space-y-3">
-          <h2 className="section-title">Summary</h2>
-          <p className="text-slate-300 text-sm leading-relaxed">{lecture.summary}</p>
-        </div>
-        <div className="card space-y-3">
-          <h2 className="section-title">Key Topics</h2>
-          <div className="flex flex-wrap gap-2">
-            {lecture.keyTopics.map((topic, i) => (
-              <span key={i} className="badge-indigo">
-                {topic}
-              </span>
+  return (
+    <div className="max-w-6xl mx-auto px-4 py-10">
+      <button
+        onClick={() => router.push("/lectures")}
+        className="text-sm text-slate-500 hover:text-slate-300 transition-colors mb-6 flex items-center gap-1"
+      >
+        ← All Lectures
+      </button>
+
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[300px_1fr]">
+        {/* Metadata rail */}
+        <aside className="space-y-5 lg:sticky lg:top-20 lg:self-start">
+          <div className="flex items-start gap-3">
+            <div className="shrink-0 w-10 h-10 rounded-lg bg-indigo-600/20 border border-indigo-600/30 flex items-center justify-center">
+              <span className="text-indigo-400 font-bold text-sm">{lecture.lectureNumber}</span>
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold text-slate-100 leading-snug">{lecture.title}</h1>
+              <p className="text-slate-500 mt-1 text-xs">{formatDate(lecture.createdAt)}</p>
+            </div>
+          </div>
+
+          <div className="subtle-panel space-y-2 p-4">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Summary
+            </h2>
+            <p className="text-slate-300 text-sm leading-relaxed">{lecture.summary}</p>
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Key Topics
+            </h2>
+            <div className="flex flex-wrap gap-1.5">
+              {lecture.keyTopics.map((topic, i) => (
+                <span key={i} className="badge-indigo">
+                  {topic}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Source Recordings
+              <span className="ml-1 font-normal text-slate-600">({audioFiles.length})</span>
+            </h2>
+            <div className="space-y-1.5">
+              {audioFiles.map((f) => (
+                <div key={f.id} className="flex items-center gap-2 text-xs text-slate-400">
+                  <span className="status-dot bg-green-400" />
+                  <span className="truncate flex-1" title={f.originalName}>
+                    {f.originalName}
+                  </span>
+                  <span className="shrink-0 text-slate-600">{formatBytes(f.size)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        {/* Main content */}
+        <div className="min-w-0 space-y-6">
+          <div className="flex gap-1 rounded-lg border border-slate-800 bg-slate-900/50 p-1">
+            {(["transcript", "materials", "podcast"] as Tab[]).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`flex-1 rounded-md px-3 py-2 text-sm font-medium capitalize transition-colors ${
+                  tab === t
+                    ? "bg-slate-800 text-slate-100"
+                    : "text-slate-500 hover:text-slate-300"
+                }`}
+              >
+                {t === "transcript"
+                  ? "📄 Transcript"
+                  : t === "materials"
+                    ? "📚 Study Materials"
+                    : "🎙️ Podcast Script"}
+              </button>
             ))}
           </div>
-        </div>
-      </div>
 
-      {/* Audio files */}
-      <div className="card space-y-3">
-        <h2 className="section-title">
-          Source Recordings
-          <span className="ml-2 text-sm font-normal text-slate-500">
-            ({audioFiles.length} file{audioFiles.length !== 1 ? "s" : ""})
-          </span>
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {audioFiles.map((f) => (
-            <div
-              key={f.id}
-              className="flex items-center gap-3 bg-slate-900/50 rounded-lg px-4 py-3 text-sm"
-            >
-              <span className="text-lg">🎵</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-slate-200 truncate font-medium">{f.originalName}</p>
-                <p className="text-slate-500 text-xs mt-0.5">
-                  {formatBytes(f.size)} &middot; {formatDate(f.recordedAt)}
-                </p>
-              </div>
-              <span className="badge-green shrink-0">transcribed</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Tabs: Transcript / Study Materials / Podcast */}
-      <div>
-        <div className="flex gap-1 border-b border-slate-700 mb-6">
-          {(["transcript", "materials", "podcast"] as Tab[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-5 py-2.5 text-sm font-medium capitalize border-b-2 transition-colors -mb-px ${
-                tab === t
-                  ? "border-indigo-500 text-indigo-400"
-                  : "border-transparent text-slate-500 hover:text-slate-300"
-              }`}
-            >
-              {t === "transcript"
-                ? "📄 Transcript"
-                : t === "materials"
-                  ? "📚 Study Materials"
-                  : "🎙️ Podcast Script"}
-            </button>
-          ))}
-        </div>
-
-        {/* Transcript Tab */}
+          {/* Transcript Tab */}
         {tab === "transcript" && (
-          <div className="card space-y-4">
+          <div className={`card space-y-4 border-l-2 ${TAB_ACCENTS.transcript}`}>
             <div className="flex items-center justify-between">
               <h2 className="section-title">Full Transcript</h2>
               <div className="flex items-center gap-3">
@@ -410,7 +411,7 @@ export default function LectureDetailPage() {
         {/* Study Materials Tab */}
         {tab === "materials" && (
           <div className="space-y-6">
-            <div className="card space-y-4">
+            <div className={`card space-y-4 border-l-2 ${TAB_ACCENTS.materials}`}>
               <div>
                 <h2 className="section-title">Generate Study Material</h2>
                 <p className="text-slate-400 text-sm mt-1">
@@ -560,7 +561,7 @@ export default function LectureDetailPage() {
         {tab === "podcast" && (
           <div className="space-y-6">
             {/* Format selector */}
-            <div className="card space-y-4">
+            <div className={`card space-y-4 border-l-2 ${TAB_ACCENTS.podcast}`}>
               <h2 className="section-title">Generate Podcast Script</h2>
               <p className="text-slate-400 text-sm">
                 Choose a format and let Gemini write a ready-to-record podcast episode based on
@@ -706,6 +707,7 @@ export default function LectureDetailPage() {
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

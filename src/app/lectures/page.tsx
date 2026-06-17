@@ -86,59 +86,45 @@ export default function LecturesPage() {
         </button>
       </div>
 
-      <div className="grid gap-5">
+      <div className="grid gap-4 sm:grid-cols-2">
         {lectures.map((lecture) => (
           <Link
             key={lecture.id}
             href={`/lectures/${lecture.id}`}
-            className="card group hover:border-indigo-600/50 hover:bg-slate-700/50 transition-all cursor-pointer block"
+            className="subtle-panel group block space-y-3 transition-colors hover:bg-slate-900/70"
           >
-            <div className="flex items-start gap-4">
-              {/* Lecture number badge */}
-              <div className="shrink-0 w-12 h-12 rounded-xl bg-indigo-600/20 border border-indigo-600/30 flex items-center justify-center">
-                <span className="text-indigo-400 font-bold text-lg">
-                  {lecture.lectureNumber}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="shrink-0 text-xs font-semibold text-indigo-400">
+                  {String(lecture.lectureNumber).padStart(2, "0")}
                 </span>
+                <h2 className="text-base font-semibold text-slate-100 group-hover:text-indigo-300 transition-colors leading-snug truncate">
+                  {lecture.title}
+                </h2>
               </div>
+              <span className="text-slate-500 text-xs shrink-0">
+                {formatDate(lecture.createdAt)}
+              </span>
+            </div>
 
-              <div className="flex-1 min-w-0 space-y-2">
-                <div className="flex items-start justify-between gap-4">
-                  <h2 className="text-lg font-semibold text-slate-100 group-hover:text-indigo-300 transition-colors leading-snug">
-                    {lecture.title}
-                  </h2>
-                  <span className="text-slate-500 text-xs shrink-0 mt-1">
-                    {formatDate(lecture.createdAt)}
-                  </span>
-                </div>
+            <p className="text-slate-400 text-sm leading-relaxed line-clamp-2">
+              {lecture.summary}
+            </p>
 
-                <p className="text-slate-400 text-sm leading-relaxed line-clamp-2">
-                  {lecture.summary}
-                </p>
+            <div className="flex flex-wrap gap-1.5">
+              {lecture.keyTopics.slice(0, 4).map((topic, i) => (
+                <span key={i} className="badge-indigo">
+                  {topic}
+                </span>
+              ))}
+            </div>
 
-                {/* Key topics */}
-                <div className="flex flex-wrap gap-2">
-                  {lecture.keyTopics.map((topic, i) => (
-                    <span key={i} className="badge-indigo">
-                      {topic}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Footer */}
-                <div className="flex items-center gap-4 pt-1 text-xs text-slate-500">
-                  <span>🎵 {lecture.audioFileIds.length} recording{lecture.audioFileIds.length !== 1 ? "s" : ""}</span>
-                  <span className="text-indigo-400 group-hover:underline">
-                    View lecture & generate podcast →
-                  </span>
-                </div>
-              </div>
+            <div className="flex items-center justify-between pt-1 text-xs text-slate-500">
+              <span>{lecture.audioFileIds.length} recording{lecture.audioFileIds.length !== 1 ? "s" : ""}</span>
+              <span className="text-indigo-400 group-hover:underline">View →</span>
             </div>
           </Link>
         ))}
-      </div>
-
-      <div className="text-center text-sm text-slate-600 pt-4">
-        Click a lecture to view its full transcript and generate a podcast script.
       </div>
     </div>
   );
