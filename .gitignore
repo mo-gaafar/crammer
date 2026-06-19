@@ -28,6 +28,10 @@ yarn-error.log*
 .env*.local
 .env
 
+# self-hosted Supabase runtime data
+/supabase/volumes/db/data/
+/supabase/volumes/storage/*
+
 # vercel
 .vercel
 

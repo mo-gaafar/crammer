@@ -117,6 +117,10 @@ Exit criteria:
 
 Goal: support cloud and multi-user self-hosted deployments.
 
+See [supabase-auth-plan.md](supabase-auth-plan.md) for the detailed schema,
+auth flow, and storage migration plan built on the self-hosted Supabase
+stack already in `docker-compose.yml`.
+
 - Add durable auth.
 - Add users.
 - Add workspaces.

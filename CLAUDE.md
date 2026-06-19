@@ -16,6 +16,14 @@ The core workflow is:
 
 The app currently uses an in-memory global store, so uploaded files, transcriptions, lectures, and generated scripts are not durable across process restarts. Treat this as a prototype/local or single-instance deployment constraint unless persistence is explicitly added.
 
+## Active Priority
+
+**Highest priority right now: implement the Supabase auth + per-user library migration described in [docs/supabase-auth-plan.md](docs/supabase-auth-plan.md).**
+
+The self-hosted Supabase stack is already in `docker-compose.yml` (services + vendored config under `supabase/volumes/`). The plan covers the schema/RLS migration, replacing `APP_SECRET_KEY` cookie auth with `@supabase/ssr`, migrating `src/lib/store.ts` off the in-memory singleton, and moving file storage to local Supabase Storage buckets. Follow the rollout order in that doc's "Suggested rollout order" section and pick up wherever it was last left off.
+
+**Remove this "Active Priority" section once the migration plan is fully implemented and verified** (don't leave a stale pointer to a finished migration).
+
 ## Tech Stack
 
 - Next.js 14 App Router

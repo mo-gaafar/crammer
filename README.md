@@ -146,6 +146,16 @@ npm run build
 docker compose up --build
 ```
 
+`docker compose up` also brings up a self-hosted Supabase stack (Postgres,
+Auth, PostgREST, Storage, Realtime, Studio, Kong) defined in the same
+`docker-compose.yml`, vendored under `supabase/`. The `.env.example` values
+work out of the box on localhost; run `sh supabase/generate-secrets.sh`
+before exposing this anywhere else. Studio is reachable at
+`http://localhost:8000` (basic auth via `DASHBOARD_USERNAME`/`DASHBOARD_PASSWORD`).
+Supabase is not yet wired into the app — see
+[docs/supabase-auth-plan.md](docs/supabase-auth-plan.md) for the planned
+per-user auth and storage migration.
+
 Network-backed flows require valid provider keys and may not be verifiable in
 every local environment.
 
@@ -154,6 +164,8 @@ every local environment.
 - State is stored in a global in-memory singleton and disappears on restart.
 - Uploaded files are stored under `/tmp/crammer-uploads`.
 - Auth is intentionally simple and not user/account based yet.
+- Self-hosted Supabase runs alongside the app in Docker Compose but the app
+  does not yet read or write to it (see docs/supabase-auth-plan.md).
 - Google Drive imports work only for accessible public/shared files.
 - Large audio and AI calls can time out or hit provider quotas.
 
