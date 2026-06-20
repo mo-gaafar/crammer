@@ -14,7 +14,15 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build-time env vars are not needed (API keys are runtime-only).
+# Server-only API keys are runtime-only and don't need to be set here.
+# NEXT_PUBLIC_* vars are the exception: Next.js inlines them into the client
+# bundle at build time, so they must be supplied as build args (see
+# docker-compose.yml's `build.args` for the crammer service).
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+
 # The standalone output self-contains the Node server.
 RUN npm run build
 

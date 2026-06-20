@@ -11,30 +11,45 @@ const highlights = [
 
 const flow = ["Upload", "Transcribe", "Group", "Review"];
 
+const supabaseConfigured = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
 function LoginForm() {
   const searchParams = useSearchParams();
   const [key, setKey] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setNotice("");
 
     try {
       const res = await fetch("/api/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key }),
+        body: JSON.stringify(supabaseConfigured ? { mode, email, password } : { key }),
       });
+      const body = await res.json().catch(() => ({}));
 
       if (res.ok) {
+        if (body.needsConfirmation) {
+          setLoading(false);
+          setNotice("Check your email to confirm your account, then sign in.");
+          return;
+        }
         const next = searchParams.get("next") || "/";
         window.location.href = next;
       } else {
         setLoading(false);
-        setError("Invalid secret key.");
+        setError(body.error || "Invalid secret key.");
       }
     } catch {
       setLoading(false);
@@ -120,7 +135,9 @@ function LoginForm() {
                 <p className="text-sm font-medium text-espresso-700">Private workspace</p>
                 <h2 className="mt-1 text-2xl font-bold text-stone-900">Unlock StudyForge</h2>
                 <p className="mt-2 text-sm leading-6 text-stone-600">
-                  Enter the app secret to continue to your dashboard.
+                  {supabaseConfigured
+                    ? "Sign in with your account to continue to your dashboard."
+                    : "Enter the app secret to continue to your dashboard."}
                 </p>
               </div>
               <div className="hidden h-12 items-end gap-1.5 opacity-70 sm:flex">
@@ -135,21 +152,62 @@ function LoginForm() {
             </div>
 
             <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-              <div>
-                <label htmlFor="secret-key" className="label">
-                  Secret key
-                </label>
-                <input
-                  id="secret-key"
-                  type="password"
-                  value={key}
-                  onChange={(e) => setKey(e.target.value)}
-                  placeholder="Paste your access key"
-                  required
-                  autoFocus
-                  className="input mt-2"
-                />
-              </div>
+              {supabaseConfigured ? (
+                <>
+                  <div>
+                    <label htmlFor="email" className="label">
+                      Email
+                    </label>
+                    <input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      required
+                      autoFocus
+                      className="input mt-2"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="password" className="label">
+                      Password
+                    </label>
+                    <input
+                      id="password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder={mode === "signup" ? "Choose a password" : "Your password"}
+                      required
+                      minLength={6}
+                      className="input mt-2"
+                    />
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <label htmlFor="secret-key" className="label">
+                    Secret key
+                  </label>
+                  <input
+                    id="secret-key"
+                    type="password"
+                    value={key}
+                    onChange={(e) => setKey(e.target.value)}
+                    placeholder="Paste your access key"
+                    required
+                    autoFocus
+                    className="input mt-2"
+                  />
+                </div>
+              )}
+
+              {notice && (
+                <p className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+                  {notice}
+                </p>
+              )}
 
               {error && (
                 <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -159,11 +217,33 @@ function LoginForm() {
 
               <button
                 type="submit"
-                disabled={loading || !key}
+                disabled={loading || (supabaseConfigured ? !email || !password : !key)}
                 className="btn-primary w-full py-3"
               >
-                {loading ? "Checking..." : "Enter workspace"}
+                {loading
+                  ? "Checking..."
+                  : supabaseConfigured
+                    ? mode === "signup"
+                      ? "Create account"
+                      : "Sign in"
+                    : "Enter workspace"}
               </button>
+
+              {supabaseConfigured && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode(mode === "signin" ? "signup" : "signin");
+                    setError("");
+                    setNotice("");
+                  }}
+                  className="w-full text-center text-sm text-espresso-700 hover:underline"
+                >
+                  {mode === "signin"
+                    ? "Need an account? Sign up"
+                    : "Already have an account? Sign in"}
+                </button>
+              )}
             </form>
 
             <div className="mt-5 grid grid-cols-3 gap-2 border-t border-stone-200 pt-5">
