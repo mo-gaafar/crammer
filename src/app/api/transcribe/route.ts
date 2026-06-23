@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import { store } from "@/lib/store";
+import { getOptionalClient } from "@/lib/supabase/server";
 import { transcribeAudioFile } from "@/lib/deepgram";
 import { transcribeWithGemini, DEFAULT_GEMINI_MODEL } from "@/lib/gemini";
 import { isVideoMimeType, extractAudioFromVideo } from "@/lib/video";
@@ -11,18 +12,21 @@ import { isVideoMimeType, extractAudioFromVideo } from "@/lib/video";
  */
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await getOptionalClient();
     const body = await request.json().catch(() => ({}));
     const fileIds: string[] | undefined = body.fileIds;
     const sttProvider: "deepgram" | "gemini" = body.sttProvider ?? "deepgram";
     const geminiModel: string = body.geminiModel ?? DEFAULT_GEMINI_MODEL;
 
     // Recover any files that got stuck in "transcribing" from a previous crashed request
-    const allFiles = store.getAllAudioFiles();
-    allFiles
-      .filter((f) => f.status === "transcribing")
-      .forEach((f) => store.updateAudioFile(f.id, { status: "uploaded" }));
+    const allFiles = await store.getAllAudioFiles(supabase);
+    await Promise.all(
+      allFiles
+        .filter((f) => f.status === "transcribing")
+        .map((f) => store.updateAudioFile(supabase, f.id, { status: "uploaded" }))
+    );
 
-    const freshFiles = store.getAllAudioFiles();
+    const freshFiles = await store.getAllAudioFiles(supabase);
     const toTranscribe = fileIds
       ? freshFiles.filter((f) => fileIds.includes(f.id) && f.status === "uploaded")
       : freshFiles.filter((f) => f.status === "uploaded");
@@ -36,7 +40,7 @@ export async function POST(request: NextRequest) {
     const results: { id: string; status: string; transcript?: string; error?: string }[] = [];
 
     for (const file of toTranscribe) {
-      store.updateAudioFile(file.id, { status: "transcribing" });
+      await store.updateAudioFile(supabase, file.id, { status: "transcribing" });
 
       try {
         let transcribePath = file.savedPath;
@@ -44,7 +48,7 @@ export async function POST(request: NextRequest) {
 
         if (isVideoMimeType(file.mimeType)) {
           const audioPath = await extractAudioFromVideo(file.savedPath, file.id);
-          store.updateAudioFile(file.id, { extractedAudioPath: audioPath });
+          await store.updateAudioFile(supabase, file.id, { extractedAudioPath: audioPath });
           transcribePath = audioPath;
           transcribeMimeType = "audio/mpeg";
         }
@@ -55,30 +59,30 @@ export async function POST(request: NextRequest) {
             : await transcribeAudioFile(transcribePath, file.id, transcribeMimeType);
 
         // Clean up extracted audio now that transcription is done
-        const extractedPath = store.getAudioFile(file.id)?.extractedAudioPath;
+        const extractedPath = (await store.getAudioFile(supabase, file.id))?.extractedAudioPath;
         if (extractedPath) {
           try { fs.unlinkSync(extractedPath); } catch { /* ignore */ }
-          store.updateAudioFile(file.id, { extractedAudioPath: undefined });
+          await store.updateAudioFile(supabase, file.id, { extractedAudioPath: undefined });
         }
 
-        store.addTranscription(transcription);
-        store.updateAudioFile(file.id, { status: "transcribed" });
+        await store.addTranscription(supabase, transcription);
+        await store.updateAudioFile(supabase, file.id, { status: "transcribed" });
         results.push({ id: file.id, status: "transcribed", transcript: transcription.text });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        store.updateAudioFile(file.id, { status: "error", errorMessage: message });
+        await store.updateAudioFile(supabase, file.id, { status: "error", errorMessage: message });
         results.push({ id: file.id, status: "error", error: message });
       }
 
-      const transcribed = store
-        .getAllAudioFiles()
-        .filter((f) => f.status === "transcribed").length;
+      const transcribed = (await store.getAllAudioFiles(supabase)).filter(
+        (f) => f.status === "transcribed"
+      ).length;
       store.updateStatus({ transcribedFiles: transcribed });
     }
 
-    const allDone = store
-      .getAllAudioFiles()
-      .every((f) => f.status === "transcribed" || f.status === "error");
+    const allDone = (await store.getAllAudioFiles(supabase)).every(
+      (f) => f.status === "transcribed" || f.status === "error"
+    );
 
     if (allDone) {
       store.updateStatus({ phase: "processing" });

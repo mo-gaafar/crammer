@@ -33,3 +33,15 @@ export async function createClient() {
     }
   );
 }
+
+export const supabaseConfigured = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
+/**
+ * Returns a request-scoped Supabase client, or null when running in single-secret
+ * (APP_SECRET_KEY) mode — the two auth modes are mutually exclusive per deployment.
+ */
+export async function getOptionalClient() {
+  return supabaseConfigured ? createClient() : null;
+}

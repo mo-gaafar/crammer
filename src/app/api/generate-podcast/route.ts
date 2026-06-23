@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { store } from "@/lib/store";
+import { getOptionalClient } from "@/lib/supabase/server";
 import { generatePodcastScript } from "@/lib/gemini";
 import { estimateTtsCost } from "@/lib/tts-cost";
 import { PodcastFormat, PodcastScript } from "@/types";
@@ -34,9 +35,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Lecture not found" }, { status: 404 });
     }
 
-    const audioFiles = lecture.audioFileIds
-      .map((id) => store.getAudioFile(id))
-      .filter(Boolean) as ReturnType<typeof store.getAudioFile>[];
+    const supabase = await getOptionalClient();
+    const audioFiles = (
+      await Promise.all(lecture.audioFileIds.map((id) => store.getAudioFile(supabase, id)))
+    ).filter(Boolean) as NonNullable<Awaited<ReturnType<typeof store.getAudioFile>>>[];
 
     const result = await generatePodcastScript(
       lecture,

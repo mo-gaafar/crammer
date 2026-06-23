@@ -3,11 +3,13 @@ import fs from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import { store } from "@/lib/store";
+import { getOptionalClient } from "@/lib/supabase/server";
 import { ensureUploadDir, getUploadDir, getRecordedAt, isAllowedAudioType } from "@/lib/metadata";
 import { AudioFile } from "@/types";
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await getOptionalClient();
     ensureUploadDir();
 
     const formData = await request.formData();
@@ -52,12 +54,12 @@ export async function POST(request: NextRequest) {
         status: "uploaded",
       };
 
-      store.addAudioFile(audioFile);
+      await store.addAudioFile(supabase, audioFile);
       savedFiles.push(audioFile);
     }
 
     // Update status
-    const all = store.getAllAudioFiles();
+    const all = await store.getAllAudioFiles(supabase);
     store.updateStatus({
       totalFiles: all.length,
       phase: all.length > 0 ? "uploading" : "idle",
@@ -77,7 +79,8 @@ export async function POST(request: NextRequest) {
 /** Reset the store and delete all uploaded files */
 export async function DELETE() {
   try {
-    const files = store.getAllAudioFiles();
+    const supabase = await getOptionalClient();
+    const files = await store.getAllAudioFiles(supabase);
     const textAudioArtifacts = store.getAllTextAudioArtifacts();
     for (const f of files) {
       try {
@@ -102,6 +105,8 @@ export async function DELETE() {
         // ignore
       }
     }
+    await store.clearAudioFiles(supabase);
+    await store.clearTranscriptions(supabase);
     store.reset();
     return NextResponse.json({ success: true });
   } catch (err) {
@@ -111,6 +116,7 @@ export async function DELETE() {
 }
 
 export async function GET() {
-  const files = store.getAllAudioFiles();
+  const supabase = await getOptionalClient();
+  const files = await store.getAllAudioFiles(supabase);
   return NextResponse.json({ files });
 }

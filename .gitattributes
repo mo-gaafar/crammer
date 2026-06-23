@@ -1,0 +1,4 @@
+# Vendored Supabase self-host scripts/configs run inside Linux containers and
+# must keep LF line endings regardless of platform autocrlf settings, or
+# entrypoint shell scripts fail with "Syntax error" inside the container.
+supabase/volumes/** -text eol=lf

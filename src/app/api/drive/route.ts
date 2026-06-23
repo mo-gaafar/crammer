@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import { store } from "@/lib/store";
+import { getOptionalClient } from "@/lib/supabase/server";
 import { ensureUploadDir, getUploadDir, getRecordedAt, isAllowedAudioType } from "@/lib/metadata";
 import { AudioFile } from "@/types";
 
@@ -82,7 +83,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: result.error }, { status: result.status ?? 500 });
   }
 
-  const existingNames = new Set(store.getAllAudioFiles().map((f) => f.originalName));
+  const supabase = await getOptionalClient();
+  const existingNames = new Set((await store.getAllAudioFiles(supabase)).map((f) => f.originalName));
   const files = (result.files ?? []).map((f) => ({
     ...f,
     alreadyImported: existingNames.has(f.name),
@@ -133,7 +135,8 @@ export async function POST(request: NextRequest) {
 
   ensureUploadDir();
 
-  const existingNames = new Set(store.getAllAudioFiles().map((f) => f.originalName));
+  const supabase = await getOptionalClient();
+  const existingNames = new Set((await store.getAllAudioFiles(supabase)).map((f) => f.originalName));
   const savedFiles: AudioFile[] = [];
   const errors: string[] = [];
   const skipped: string[] = [];
@@ -178,13 +181,14 @@ export async function POST(request: NextRequest) {
       status: "uploaded",
     };
 
-    store.addAudioFile(audioFile);
+    await store.addAudioFile(supabase, audioFile);
     savedFiles.push(audioFile);
   }
 
+  const allFiles = await store.getAllAudioFiles(supabase);
   store.updateStatus({
-    totalFiles: store.getAllAudioFiles().length,
-    phase: store.getAllAudioFiles().length > 0 ? "uploading" : "idle",
+    totalFiles: allFiles.length,
+    phase: allFiles.length > 0 ? "uploading" : "idle",
   });
 
   return NextResponse.json({

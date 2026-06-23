@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   AudioFile,
   Transcription,
@@ -7,6 +8,12 @@ import {
   StudyMaterial,
   TextAudioArtifact,
 } from "@/types";
+
+// audio_files and transcriptions are backed by Supabase (RLS-scoped per user)
+// when Supabase auth is configured; pass `null` for the single-secret
+// (APP_SECRET_KEY) deployment mode, which keeps the in-memory fallback below.
+// See docs/supabase-auth-plan.md.
+type DbClient = SupabaseClient | null;
 
 interface StoreData {
   audioFiles: Map<string, AudioFile>;
@@ -48,40 +55,166 @@ function getStore(): StoreData {
   return global.__crammerStore;
 }
 
+function rowToAudioFile(row: Record<string, unknown>): AudioFile {
+  return {
+    id: row.id as string,
+    originalName: row.original_name as string,
+    savedPath: row.storage_path as string,
+    mimeType: row.mime_type as string,
+    size: row.size as number,
+    recordedAt: row.recorded_at as string,
+    uploadedAt: row.uploaded_at as string,
+    status: row.status as AudioFile["status"],
+    errorMessage: (row.error_message as string | null) ?? undefined,
+    extractedAudioPath: (row.extracted_audio_path as string | null) ?? undefined,
+  };
+}
+
+function audioFileToRow(file: AudioFile, userId: string) {
+  return {
+    id: file.id,
+    user_id: userId,
+    original_name: file.originalName,
+    storage_path: file.savedPath,
+    mime_type: file.mimeType,
+    size: file.size,
+    recorded_at: file.recordedAt,
+    uploaded_at: file.uploadedAt,
+    status: file.status,
+    error_message: file.errorMessage ?? null,
+    extracted_audio_path: file.extractedAudioPath ?? null,
+  };
+}
+
+function audioFileUpdatesToRow(updates: Partial<AudioFile>) {
+  const has = (key: keyof AudioFile) => Object.prototype.hasOwnProperty.call(updates, key);
+  const row: Record<string, unknown> = {};
+  if (has("originalName")) row.original_name = updates.originalName;
+  if (has("savedPath")) row.storage_path = updates.savedPath;
+  if (has("mimeType")) row.mime_type = updates.mimeType;
+  if (has("size")) row.size = updates.size;
+  if (has("recordedAt")) row.recorded_at = updates.recordedAt;
+  if (has("uploadedAt")) row.uploaded_at = updates.uploadedAt;
+  if (has("status")) row.status = updates.status;
+  // errorMessage/extractedAudioPath are explicitly set to `undefined` by callers to
+  // clear them — use `hasOwnProperty` rather than `!== undefined` so that intent persists.
+  if (has("errorMessage")) row.error_message = updates.errorMessage ?? null;
+  if (has("extractedAudioPath")) row.extracted_audio_path = updates.extractedAudioPath ?? null;
+  return row;
+}
+
+function rowToTranscription(row: Record<string, unknown>): Transcription {
+  return {
+    audioFileId: row.audio_file_id as string,
+    text: row.text as string,
+    words: (row.words as Transcription["words"]) ?? [],
+    confidence: row.confidence as number,
+    duration: row.duration as number,
+    paragraphs: (row.paragraphs as string[] | null) ?? undefined,
+  };
+}
+
+function transcriptionToRow(t: Transcription, userId: string) {
+  return {
+    audio_file_id: t.audioFileId,
+    user_id: userId,
+    text: t.text,
+    words: t.words,
+    confidence: t.confidence,
+    duration: t.duration,
+    paragraphs: t.paragraphs ?? null,
+  };
+}
+
+async function requireUserId(supabase: SupabaseClient): Promise<string> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+  return user.id;
+}
+
 export const store = {
   // Audio files
-  addAudioFile(file: AudioFile): void {
-    getStore().audioFiles.set(file.id, file);
-  },
-  getAudioFile(id: string): AudioFile | undefined {
-    return getStore().audioFiles.get(id);
-  },
-  updateAudioFile(id: string, updates: Partial<AudioFile>): void {
-    const store = getStore();
-    const existing = store.audioFiles.get(id);
-    if (existing) {
-      store.audioFiles.set(id, { ...existing, ...updates });
+  async addAudioFile(supabase: DbClient, file: AudioFile): Promise<void> {
+    if (!supabase) {
+      getStore().audioFiles.set(file.id, file);
+      return;
     }
+    const userId = await requireUserId(supabase);
+    const { error } = await supabase.from("audio_files").insert(audioFileToRow(file, userId));
+    if (error) throw new Error(error.message);
   },
-  getAllAudioFiles(): AudioFile[] {
-    return Array.from(getStore().audioFiles.values());
+  async getAudioFile(supabase: DbClient, id: string): Promise<AudioFile | undefined> {
+    if (!supabase) return getStore().audioFiles.get(id);
+    const { data, error } = await supabase.from("audio_files").select("*").eq("id", id).maybeSingle();
+    if (error || !data) return undefined;
+    return rowToAudioFile(data);
   },
-  clearAudioFiles(): void {
-    getStore().audioFiles.clear();
+  async updateAudioFile(supabase: DbClient, id: string, updates: Partial<AudioFile>): Promise<void> {
+    if (!supabase) {
+      const store = getStore();
+      const existing = store.audioFiles.get(id);
+      if (existing) {
+        store.audioFiles.set(id, { ...existing, ...updates });
+      }
+      return;
+    }
+    const row = audioFileUpdatesToRow(updates);
+    if (Object.keys(row).length === 0) return;
+    const { error } = await supabase.from("audio_files").update(row).eq("id", id);
+    if (error) throw new Error(error.message);
+  },
+  async getAllAudioFiles(supabase: DbClient): Promise<AudioFile[]> {
+    if (!supabase) return Array.from(getStore().audioFiles.values());
+    const { data, error } = await supabase.from("audio_files").select("*").order("uploaded_at");
+    if (error || !data) return [];
+    return data.map(rowToAudioFile);
+  },
+  async clearAudioFiles(supabase: DbClient): Promise<void> {
+    if (!supabase) {
+      getStore().audioFiles.clear();
+      return;
+    }
+    const userId = await requireUserId(supabase);
+    const { error } = await supabase.from("audio_files").delete().eq("user_id", userId);
+    if (error) throw new Error(error.message);
   },
 
   // Transcriptions
-  addTranscription(t: Transcription): void {
-    getStore().transcriptions.set(t.audioFileId, t);
+  async addTranscription(supabase: DbClient, t: Transcription): Promise<void> {
+    if (!supabase) {
+      getStore().transcriptions.set(t.audioFileId, t);
+      return;
+    }
+    const userId = await requireUserId(supabase);
+    const { error } = await supabase
+      .from("transcriptions")
+      .upsert(transcriptionToRow(t, userId), { onConflict: "audio_file_id" });
+    if (error) throw new Error(error.message);
   },
-  getTranscription(audioFileId: string): Transcription | undefined {
-    return getStore().transcriptions.get(audioFileId);
+  async getTranscription(supabase: DbClient, audioFileId: string): Promise<Transcription | undefined> {
+    if (!supabase) return getStore().transcriptions.get(audioFileId);
+    const { data, error } = await supabase
+      .from("transcriptions")
+      .select("*")
+      .eq("audio_file_id", audioFileId)
+      .maybeSingle();
+    if (error || !data) return undefined;
+    return rowToTranscription(data);
   },
-  getAllTranscriptions(): Transcription[] {
-    return Array.from(getStore().transcriptions.values());
+  async getAllTranscriptions(supabase: DbClient): Promise<Transcription[]> {
+    if (!supabase) return Array.from(getStore().transcriptions.values());
+    const { data, error } = await supabase.from("transcriptions").select("*");
+    if (error || !data) return [];
+    return data.map(rowToTranscription);
   },
-  clearTranscriptions(): void {
-    getStore().transcriptions.clear();
+  async clearTranscriptions(supabase: DbClient): Promise<void> {
+    if (!supabase) {
+      getStore().transcriptions.clear();
+      return;
+    }
+    const userId = await requireUserId(supabase);
+    const { error } = await supabase.from("transcriptions").delete().eq("user_id", userId);
+    if (error) throw new Error(error.message);
   },
 
   // Lectures

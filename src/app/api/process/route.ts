@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { store } from "@/lib/store";
+import { getOptionalClient } from "@/lib/supabase/server";
 import { inferLectures } from "@/lib/gemini";
 import { Lecture } from "@/types";
 
@@ -11,12 +12,13 @@ import { Lecture } from "@/types";
  */
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await getOptionalClient();
     const body = await request.json().catch(() => ({}));
     const geminiModel: string | undefined = body.geminiModel;
 
     store.updateStatus({ phase: "processing" });
 
-    const audioFiles = store.getAllAudioFiles();
+    const audioFiles = await store.getAllAudioFiles(supabase);
     const transcribedFiles = audioFiles.filter((f) => f.status === "transcribed");
 
     if (transcribedFiles.length === 0) {
@@ -31,10 +33,14 @@ export async function POST(request: NextRequest) {
       (a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime()
     );
 
+    const transcriptionsById = new Map(
+      (await store.getAllTranscriptions(supabase)).map((t) => [t.audioFileId, t])
+    );
+
     // Build input for Gemini — use simple indices instead of UUIDs so Gemini
     // can faithfully reproduce them in the audioFileIds output field.
     const inputs = sorted.map((f, i) => {
-      const transcription = store.getTranscription(f.id);
+      const transcription = transcriptionsById.get(f.id);
       const fullText = transcription?.text ?? "(no transcript)";
       return {
         id: `file_${i}`,
@@ -70,7 +76,7 @@ export async function POST(request: NextRequest) {
 
       const fullTranscript = groupFiles
         .map((f) => {
-          const t = store.getTranscription(f!.id);
+          const t = transcriptionsById.get(f!.id);
           const header = `[${f!.originalName} — ${new Date(f!.recordedAt).toLocaleDateString()}]`;
           return `${header}\n${t?.text ?? ""}`;
         })

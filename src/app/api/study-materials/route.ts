@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { DEFAULT_GEMINI_MODEL, generateStudyMaterial, generateStudyMaterialFromText } from "@/lib/gemini";
 import { store } from "@/lib/store";
+import { getOptionalClient } from "@/lib/supabase/server";
 import { getStudyTemplate, STUDY_TEMPLATES } from "@/lib/study-templates";
 import { StudyMaterial } from "@/types";
 
@@ -50,9 +51,10 @@ export async function POST(request: NextRequest) {
       if (!lecture) {
         return NextResponse.json({ error: "Lecture not found" }, { status: 404 });
       }
-      const audioFiles = lecture.audioFileIds
-        .map((id) => store.getAudioFile(id))
-        .filter((file): file is NonNullable<typeof file> => file !== undefined);
+      const supabase = await getOptionalClient();
+      const audioFiles = (
+        await Promise.all(lecture.audioFileIds.map((id) => store.getAudioFile(supabase, id)))
+      ).filter((file): file is NonNullable<typeof file> => file !== undefined);
 
       generated = await generateStudyMaterial(lecture, audioFiles, template);
       material = {
