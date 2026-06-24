@@ -7,7 +7,7 @@ services:
     container_name: crammer
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${HOST_PORT:-3000}:3000"
     environment:
       - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
